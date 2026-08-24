@@ -37,7 +37,7 @@ export default function Navbar() {
   };
 
   return (
-    <header className="sticky top-0 z-40 w-full h-14 border-b border-[var(--border-color)] bg-[var(--bg-surface)]/90 backdrop-blur-xl px-4 lg:px-8 flex items-center justify-between transition-colors shadow-xs">
+    <header className="sticky top-0 z-40 w-full h-16 border-b border-[var(--border-color)] bg-[var(--bg-surface)]/90 backdrop-blur-xl px-4 lg:px-8 flex items-center justify-between transition-colors shadow-xs">
       
       {/* Brand Logo */}
       <Link href="/" className="flex items-center gap-3 group">
