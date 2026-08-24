@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import { useAppDispatch, useAppSelector } from "../../redux/store";
-import { closeCommentsDrawer } from "../../redux/slices/uiSlice";
+import { closeCommentsDrawer, openAuthModal } from "../../redux/slices/uiSlice";
 import { useCheckAuthQuery } from "../../redux/api/authApi";
 import { useGetCommentsQuery, useAddCommentMutation } from "../../redux/api/commentsApi";
 import CommentItem from "./CommentItem";
-import { FiX, FiSend } from "react-icons/fi";
+import { FiX, FiSend, FiLock } from "react-icons/fi";
 
 export default function CommentsDrawer() {
   const dispatch = useAppDispatch();
@@ -26,6 +26,10 @@ export default function CommentsDrawer() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isAuthenticated) {
+      dispatch(openAuthModal("post comments"));
+      return;
+    }
     if (!newCommentText.trim() || !commentsShortId || isPosting) return;
 
     try {
@@ -108,8 +112,14 @@ export default function CommentsDrawer() {
             </button>
           </form>
         ) : (
-          <div className="p-4 border-t border-[var(--border-color)] text-center text-xs font-semibold text-[var(--text-secondary)] bg-[var(--bg-elevated)]/30">
-            Please log in to join the conversation.
+          <div className="p-4 border-t border-[var(--border-color)] bg-[var(--bg-elevated)]/40">
+            <button
+              onClick={() => dispatch(openAuthModal("post comments"))}
+              className="w-full h-11 rounded-full bg-gradient-to-r from-[var(--accent-primary)] via-rose-500 to-[var(--accent-secondary)] text-white text-xs font-extrabold flex items-center justify-center gap-2 shadow-md shadow-[var(--accent-primary)]/20 hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer"
+            >
+              <FiLock className="w-4 h-4" />
+              <span>Log in to join the conversation</span>
+            </button>
           </div>
         )}
       </div>

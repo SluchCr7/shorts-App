@@ -6,7 +6,7 @@ import { useAppDispatch, useAppSelector } from "../../redux/store";
 import { useCheckAuthQuery } from "../../redux/api/authApi";
 import { useToggleLikeShortMutation, useToggleSaveShortMutation } from "../../redux/api/shortsApi";
 import { useToggleFollowUserMutation } from "../../redux/api/usersApi";
-import { openCommentsDrawer } from "../../redux/slices/uiSlice";
+import { openCommentsDrawer, openAuthModal } from "../../redux/slices/uiSlice";
 import { Short } from "../../types";
 import SoundDisc from "./SoundDisc";
 import { FiHeart, FiMessageSquare, FiBookmark, FiShare2, FiPlus, FiCheck } from "react-icons/fi";
@@ -30,19 +30,29 @@ export default function ShortSidebar({ short, isPlaying }: ShortSidebarProps) {
 
   const handleLike = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!isAuthenticated) return;
+    if (!isAuthenticated) {
+      dispatch(openAuthModal("like videos"));
+      return;
+    }
     toggleLikeShort({ short, feedType });
   };
 
   const handleSave = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!isAuthenticated) return;
+    if (!isAuthenticated) {
+      dispatch(openAuthModal("save videos to your favorites"));
+      return;
+    }
     toggleSaveShort({ short, feedType });
   };
 
   const handleFollow = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!isAuthenticated || !short.owner?._id) return;
+    if (!isAuthenticated) {
+      dispatch(openAuthModal("follow creators"));
+      return;
+    }
+    if (!short.owner?._id) return;
     toggleFollowUser({
       userId: short.owner._id,
       username: short.owner.username,
@@ -77,7 +87,7 @@ export default function ShortSidebar({ short, isPlaying }: ShortSidebarProps) {
             />
           </div>
         </Link>
-        {isAuthenticated && user?._id !== short.owner?._id && !short.isFollowingOwner && (
+        {user?._id !== short.owner?._id && !short.isFollowingOwner && (
           <button
             onClick={handleFollow}
             className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-5 h-5 rounded-full bg-[var(--accent-primary)] text-white flex items-center justify-center shadow-lg hover:scale-110 active:scale-95 transition-transform cursor-pointer border border-white"

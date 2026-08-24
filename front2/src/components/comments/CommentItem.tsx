@@ -3,7 +3,9 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Comment } from "../../types";
+import { useAppDispatch } from "../../redux/store";
 import { useCheckAuthQuery } from "../../redux/api/authApi";
+import { openAuthModal } from "../../redux/slices/uiSlice";
 import {
   useDeleteCommentMutation,
   useToggleLikeCommentMutation,
@@ -19,6 +21,7 @@ interface CommentItemProps {
 }
 
 export default function CommentItem({ comment, shortId, depth = 0 }: CommentItemProps) {
+  const dispatch = useAppDispatch();
   const { data: user } = useCheckAuthQuery();
   const [deleteComment] = useDeleteCommentMutation();
   const [toggleLikeComment] = useToggleLikeCommentMutation();
@@ -44,7 +47,10 @@ export default function CommentItem({ comment, shortId, depth = 0 }: CommentItem
   };
 
   const handleLike = () => {
-    if (!user) return;
+    if (!isAuthenticated) {
+      dispatch(openAuthModal("like comments"));
+      return;
+    }
     toggleLikeComment({
       commentId: comment._id,
       shortId,
@@ -53,8 +59,23 @@ export default function CommentItem({ comment, shortId, depth = 0 }: CommentItem
     });
   };
 
+  const handleReplyClick = () => {
+    if (!isAuthenticated) {
+      dispatch(openAuthModal("reply to comments"));
+      return;
+    }
+    setIsReplying(!isReplying);
+    if (!isReplying && !replyText) {
+      setReplyText(`@${comment.user?.username} `);
+    }
+  };
+
   const handlePostReply = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isAuthenticated) {
+      dispatch(openAuthModal("reply to comments"));
+      return;
+    }
     if (!replyText.trim() || isPostingReply) return;
 
     try {
@@ -66,7 +87,7 @@ export default function CommentItem({ comment, shortId, depth = 0 }: CommentItem
 
       setReplyText("");
       setIsReplying(false);
-      setShowReplies(true); // Open replies thread automatically
+      setShowReplies(true);
     } catch (err) {
       console.error("Failed to post reply", err);
     }
@@ -134,14 +155,9 @@ export default function CommentItem({ comment, shortId, depth = 0 }: CommentItem
           <div className="flex items-center gap-4 text-[11px] text-[var(--text-muted)] pt-0.5">
             <span>{new Date(comment.createdAt).toLocaleDateString()}</span>
 
-            {isAuthenticated && depth < 3 && (
+            {depth < 3 && (
               <button
-                onClick={() => {
-                  setIsReplying(!isReplying);
-                  if (!isReplying && !replyText) {
-                    setReplyText(`@${comment.user?.username} `);
-                  }
-                }}
+                onClick={handleReplyClick}
                 className="font-bold hover:text-[var(--accent-primary)] transition-colors cursor-pointer flex items-center gap-1"
               >
                 <FiCornerDownRight className="w-3 h-3" />

@@ -6,6 +6,7 @@ import Navbar from "../src/components/layout/Navbar";
 import Sidebar from "../src/components/layout/Sidebar";
 import UploadModal from "../src/components/upload/UploadModal";
 import CommentsDrawer from "../src/components/comments/CommentsDrawer";
+import AuthPromptModal from "../src/components/auth/AuthPromptModal";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -38,6 +39,7 @@ export default function RootLayout({
           </div>
           <UploadModal />
           <CommentsDrawer />
+          <AuthPromptModal />
         </ReduxProvider>
       </body>
     </html>

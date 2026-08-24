@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAppDispatch, useAppSelector } from "../../redux/store";
 import { useCheckAuthQuery } from "../../redux/api/authApi";
-import { setFeedType } from "../../redux/slices/uiSlice";
+import { setFeedType, openAuthModal } from "../../redux/slices/uiSlice";
 import { FiCompass, FiUsers, FiHome, FiTrendingUp, FiBookmark } from "react-icons/fi";
 
 export default function Sidebar() {
@@ -20,18 +20,21 @@ export default function Sidebar() {
       icon: FiHome,
       path: "/",
       type: "for-you" as const,
+      requiresAuth: false,
     },
     {
       name: "Following",
       icon: FiUsers,
       path: "/following",
       type: "following" as const,
+      requiresAuth: true,
     },
     {
       name: "Explore",
       icon: FiCompass,
       path: "/explore",
       type: null,
+      requiresAuth: false,
     },
   ];
 
@@ -60,8 +63,13 @@ export default function Sidebar() {
             return (
               <Link
                 key={item.name}
-                href={item.path}
-                onClick={() => {
+                href={item.requiresAuth && !isAuthenticated ? "#" : item.path}
+                onClick={(e) => {
+                  if (item.requiresAuth && !isAuthenticated) {
+                    e.preventDefault();
+                    dispatch(openAuthModal("view your following feed"));
+                    return;
+                  }
                   if (item.type) {
                     dispatch(setFeedType(item.type));
                   }

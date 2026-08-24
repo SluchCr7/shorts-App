@@ -2,8 +2,10 @@
 
 import { useRef, useState, useEffect } from "react";
 import Link from "next/link";
-import { useAppSelector } from "../../redux/store";
+import { useAppDispatch, useAppSelector } from "../../redux/store";
+import { useCheckAuthQuery } from "../../redux/api/authApi";
 import { useToggleLikeShortMutation, useIncrementViewsMutation } from "../../redux/api/shortsApi";
+import { openAuthModal } from "../../redux/slices/uiSlice";
 import { Short } from "../../types";
 import ShortSidebar from "./ShortSidebar";
 import { FiVolume2, FiVolumeX, FiPlay, FiMusic, FiHeart } from "react-icons/fi";
@@ -14,7 +16,11 @@ interface ShortCardProps {
 }
 
 export default function ShortCard({ short, isActive }: ShortCardProps) {
+  const dispatch = useAppDispatch();
   const { feedType } = useAppSelector((state) => state.ui);
+  const { data: user } = useCheckAuthQuery();
+  const isAuthenticated = !!user;
+
   const [toggleLikeShort] = useToggleLikeShortMutation();
   const [incrementViews] = useIncrementViewsMutation();
 
@@ -72,6 +78,10 @@ export default function ShortCard({ short, isActive }: ShortCardProps) {
   // Double click video to like
   const handleDoubleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!isAuthenticated) {
+      dispatch(openAuthModal("like videos"));
+      return;
+    }
     setShowHeartAnim(true);
     setTimeout(() => setShowHeartAnim(false), 800);
     if (!short.isLiked) {

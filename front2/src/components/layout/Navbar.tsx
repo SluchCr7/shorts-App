@@ -139,13 +139,6 @@ export default function Navbar() {
               <FiLogIn className="w-4 h-4 text-[var(--text-secondary)] group-hover:text-[var(--accent-primary)] transition-colors" />
             </Link>
             
-            {/* Sign Up Button */}
-            <Link
-              href="/register"
-              className="h-10 px-5 rounded-full bg-[var(--accent-primary)] text-white text-sm font-bold hover:opacity-95 shadow-md shadow-[var(--accent-primary)]/20 hover:scale-[1.02] flex items-center justify-center transition-all duration-200"
-            >
-              Sign up
-            </Link>
           </div>
         )}
       </div>

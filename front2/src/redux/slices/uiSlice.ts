@@ -6,6 +6,8 @@ interface UiState {
   isUploadOpen: boolean;
   isCommentsOpen: boolean;
   commentsShortId: string | null;
+  isAuthModalOpen: boolean;
+  authModalAction: string;
 }
 
 const initialState: UiState = {
@@ -14,6 +16,8 @@ const initialState: UiState = {
   isUploadOpen: false,
   isCommentsOpen: false,
   commentsShortId: null,
+  isAuthModalOpen: false,
+  authModalAction: "interact with shorts",
 };
 
 export const uiSlice = createSlice({
@@ -40,6 +44,14 @@ export const uiSlice = createSlice({
       state.isCommentsOpen = false;
       state.commentsShortId = null;
     },
+    openAuthModal: (state, action: PayloadAction<string | undefined>) => {
+      state.isAuthModalOpen = true;
+      state.authModalAction = action.payload || "interact with shorts";
+    },
+    closeAuthModal: (state) => {
+      state.isAuthModalOpen = false;
+      state.authModalAction = "interact with shorts";
+    },
   },
 });
 
@@ -50,6 +62,8 @@ export const {
   closeUploadModal,
   openCommentsDrawer,
   closeCommentsDrawer,
+  openAuthModal,
+  closeAuthModal,
 } = uiSlice.actions;
 
 export default uiSlice.reducer;
