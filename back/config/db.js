@@ -1,6 +1,13 @@
 const mongoose = require("mongoose");
 
+let isConnected = false;
+
 const connectDB = async () => {
+  if (isConnected || mongoose.connection.readyState >= 1) {
+    isConnected = true;
+    return mongoose.connection;
+  }
+
   const mongoUri = process.env.MONGODB_URI;
 
   try {
@@ -8,6 +15,7 @@ const connectDB = async () => {
     const conn = await mongoose.connect(mongoUri, {
       serverSelectionTimeoutMS: 5000,
     });
+    isConnected = true;
     console.log(`[MongoDB] Connected successfully: ${conn.connection.host}`);
     return conn;
   } catch (error) {
@@ -17,6 +25,7 @@ const connectDB = async () => {
       const fallbackConn = await mongoose.connect("mongodb://127.0.0.1:27017/video_shorts", {
         serverSelectionTimeoutMS: 3000,
       });
+      isConnected = true;
       console.log(`[MongoDB] Local fallback connected: ${fallbackConn.connection.host}`);
       return fallbackConn;
     } catch (fallbackErr) {
