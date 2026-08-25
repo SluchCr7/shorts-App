@@ -14,7 +14,15 @@ export const authApi = baseApi.injectEndpoints({
         method: "POST",
         body: credentials,
       }),
-      transformResponse: (response: { data: { user: User } }) => response.data.user,
+      transformResponse: (response: { data: { user: User; accessToken?: string; refreshToken?: string } }) => {
+        if (typeof window !== "undefined" && response.data?.accessToken) {
+          localStorage.setItem("accessToken", response.data.accessToken);
+          if (response.data.refreshToken) {
+            localStorage.setItem("refreshToken", response.data.refreshToken);
+          }
+        }
+        return response.data.user;
+      },
       invalidatesTags: ["Auth"],
     }),
     register: builder.mutation<User, { username: string; email: string; password: string; fullName: string }>({
@@ -23,7 +31,15 @@ export const authApi = baseApi.injectEndpoints({
         method: "POST",
         body: userData,
       }),
-      transformResponse: (response: { data: { user: User } }) => response.data.user,
+      transformResponse: (response: { data: { user: User; accessToken?: string; refreshToken?: string } }) => {
+        if (typeof window !== "undefined" && response.data?.accessToken) {
+          localStorage.setItem("accessToken", response.data.accessToken);
+          if (response.data.refreshToken) {
+            localStorage.setItem("refreshToken", response.data.refreshToken);
+          }
+        }
+        return response.data.user;
+      },
       invalidatesTags: ["Auth"],
     }),
     logout: builder.mutation<void, void>({
@@ -33,6 +49,10 @@ export const authApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ["Auth"],
       async onQueryStarted(_, { dispatch, queryFulfilled }) {
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("accessToken");
+          localStorage.removeItem("refreshToken");
+        }
         try {
           await queryFulfilled;
           dispatch(baseApi.util.resetApiState());

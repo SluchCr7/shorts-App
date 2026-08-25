@@ -15,17 +15,25 @@ app.use(helmet());
 
 // CORS Setup (allow credentials for HTTP-only cookies across domains)
 const allowedOrigins = [
-  process.env.FRONTEND_ORIGIN || "http://localhost:3000",
+  process.env.FRONTEND_ORIGIN,
+  "http://localhost:3000",
   "http://localhost:3001",
-];
+  "http://localhost:5173",
+].filter(Boolean);
 
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin) || process.env.NODE_ENV !== "production") {
+      if (
+        !origin ||
+        allowedOrigins.includes(origin) ||
+        origin.endsWith(".vercel.app") ||
+        origin.endsWith(".netlify.app") ||
+        process.env.NODE_ENV !== "production"
+      ) {
         callback(null, true);
       } else {
-        callback(null, origin || true);
+        callback(null, origin);
       }
     },
     credentials: true,

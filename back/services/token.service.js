@@ -2,7 +2,7 @@ const User = require("../models/User");
 const ApiError = require("../utils/ApiError");
 
 const getCookieOptions = () => {
-  const isProduction = process.env.NODE_ENV === "production";
+  const isProduction = process.env.NODE_ENV === "production" || !!process.env.VERCEL;
   return {
     httpOnly: true,
     secure: isProduction,
@@ -37,8 +37,8 @@ const generateAccessAndRefreshTokens = async (userId) => {
 const setAuthCookies = (res, accessToken, refreshToken) => {
   const options = getCookieOptions();
 
-  // Access Token Cookie (15 mins by default)
-  const accessMaxAge = 15 * 60 * 1000;
+  // Access Token Cookie (1 day in production to avoid premature logout on tab close)
+  const accessMaxAge = 24 * 60 * 60 * 1000;
   res.cookie("accessToken", accessToken, {
     ...options,
     maxAge: accessMaxAge,
