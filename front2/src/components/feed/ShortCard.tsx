@@ -99,8 +99,7 @@ export default function ShortCard({ short, isActive }: ShortCardProps) {
   };
 
   return (
-    <div className="relative w-full h-[calc(100vh-4rem)] max-w-[420px] mx-auto snap-start flex items-center justify-center bg-slate-950 overflow-hidden rounded-none sm:rounded-3xl shadow-2xl border border-white/10 group transition-transform duration-300">
-      {/* Video Element */}
+    <div className="relative w-full h-full max-w-[480px] mx-auto flex items-center justify-center bg-slate-950 overflow-hidden rounded-none shadow-2xl border-x sm:border-white/10 group transition-all duration-300">      {/* Video Element */}
       <video
         ref={videoRef}
         src={short.videoUrl}
@@ -111,7 +110,7 @@ export default function ShortCard({ short, isActive }: ShortCardProps) {
         onTimeUpdate={handleTimeUpdate}
         onClick={handleVideoClick}
         onDoubleClick={handleDoubleClick}
-        className="w-full h-full object-cover cursor-pointer select-none"
+        className="w-full h-full object-cover cursor-pointer select-none "
       />
 
       {/* Top & Bottom Ambient Shadow Gradients */}

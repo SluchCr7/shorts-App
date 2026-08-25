@@ -59,7 +59,7 @@ export default function FeedContainer() {
 
   if (isLoading && page === 1) {
     return (
-      <div className="w-full h-[calc(100vh-4rem)] flex flex-col items-center justify-center gap-3">
+      <div className="w-full h-screen flex flex-col items-center justify-center gap-3">
         <div className="w-12 h-12 rounded-full border-4 border-[var(--accent-primary)] border-t-transparent animate-spin" />
         <p className="text-sm font-semibold text-[var(--text-secondary)]">Loading short videos...</p>
       </div>
@@ -68,7 +68,7 @@ export default function FeedContainer() {
 
   if (!isLoading && feed.length === 0) {
     return (
-      <div className="w-full h-[calc(100vh-4rem)] flex flex-col items-center justify-center gap-4 text-center px-4">
+      <div className="w-full h-screen flex flex-col items-center justify-center gap-4 text-center px-4">
         <div className="w-16 h-16 rounded-3xl bg-[var(--bg-elevated)] flex items-center justify-center text-[var(--accent-primary)] text-2xl font-bold">
           🎬
         </div>
@@ -85,10 +85,10 @@ export default function FeedContainer() {
   return (
     <div
       ref={containerRef}
-      className="w-full h-[calc(100vh-4rem)] overflow-y-scroll snap-y snap-mandatory no-scrollbar py-2 sm:py-4"
+      className="w-full h-screen overflow-y-scroll snap-y snap-mandatory no-scrollbar"
     >
       {feed.map((short, index) => (
-        <div key={short._id} className="mb-4 last:mb-0">
+        <div key={short._id} className="w-full h-screen snap-start snap-always flex items-center justify-center overflow-hidden py-4">
           <ShortCard short={short} isActive={index === activeIndex} />
         </div>
       ))}
