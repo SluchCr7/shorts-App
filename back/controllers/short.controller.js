@@ -47,6 +47,7 @@ const enrichShortsWithInteractions = async (shorts, userId) => {
 const { processVideo, extractThumbnail, cleanupFiles } = require("../services/ffmpeg.service");
 const path = require("path");
 const fs = require("fs");
+const os = require("os");
 
 // @desc    Upload a new video short
 // @route   POST /api/v1/shorts
@@ -66,8 +67,8 @@ const uploadShort = asyncHandler(async (req, res) => {
   if (thumbnailFile?.path) filesToCleanup.push(thumbnailFile.path);
 
   let finalVideoPath = videoFile.path;
-  const tempDir = videoFile.destination || path.dirname(videoFile.path);
-  const processedVideoPath = path.join(tempDir, `trimmed-${Date.now()}-${path.basename(videoFile.path)}`);
+  const tempDir = videoFile.destination || (videoFile.path ? path.dirname(videoFile.path) : os.tmpdir());
+  const processedVideoPath = path.join(tempDir, `trimmed-${Date.now()}-${path.basename(videoFile.path || "video.mp4")}`);
 
   try {
     // Attempt FFmpeg video trimming & scaling

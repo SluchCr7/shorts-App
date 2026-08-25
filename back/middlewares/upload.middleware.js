@@ -1,16 +1,29 @@
 const multer = require("multer");
 const ApiError = require("../utils/ApiError");
 
+const os = require("os");
 const fs = require("fs");
 const path = require("path");
 
-const tempDir = path.join(__dirname, "../uploads/temp");
-if (!fs.existsSync(tempDir)) {
-  fs.mkdirSync(tempDir, { recursive: true });
+const tempDir = path.join(os.tmpdir(), "shorts-uploads");
+
+try {
+  if (!fs.existsSync(tempDir)) {
+    fs.mkdirSync(tempDir, { recursive: true });
+  }
+} catch (err) {
+  console.warn("Could not create temp directory immediately:", err.message);
 }
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
+    try {
+      if (!fs.existsSync(tempDir)) {
+        fs.mkdirSync(tempDir, { recursive: true });
+      }
+    } catch (e) {
+      console.warn("Error creating destination temp directory:", e);
+    }
     cb(null, tempDir);
   },
   filename: (req, file, cb) => {
