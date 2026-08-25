@@ -170,6 +170,7 @@ export const shortsApi = baseApi.injectEndpoints({
       query: ({ shortId }) => ({
         url: `/shorts/${shortId}/share`,
         method: "POST",
+        body: {},
       }),
       async onQueryStarted({ shortId, feedType = "for-you" }, { dispatch, queryFulfilled }) {
         const patchFeed = dispatch(

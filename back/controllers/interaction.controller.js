@@ -182,18 +182,19 @@ const shareShort = asyncHandler(async (req, res) => {
   if (req.user) {
     // Resolve root original short so nested reposts point to original creator
     const rootOriginalId = targetShort.originalShort || targetShort._id;
+    const body = req.body || {};
 
     const newShort = await Short.create({
       owner: req.user._id,
-      title: req.body.title || targetShort.title,
-      description: req.body.description || targetShort.description,
+      title: body.title || targetShort.title || "Untitled Short",
+      description: body.description || targetShort.description || "",
       videoUrl: targetShort.videoUrl,
       videoPublicId: targetShort.videoPublicId,
       thumbnailUrl: targetShort.thumbnailUrl,
-      thumbnailPublicId: targetShort.thumbnailPublicId,
-      duration: targetShort.duration,
-      sound: targetShort.sound,
-      hashtags: targetShort.hashtags,
+      thumbnailPublicId: targetShort.thumbnailPublicId || "",
+      duration: targetShort.duration || 0,
+      sound: targetShort.sound || null,
+      hashtags: targetShort.hashtags || [],
       originalShort: rootOriginalId,
       privacy: "public",
     });
