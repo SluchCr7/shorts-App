@@ -8,6 +8,7 @@ interface UiState {
   commentsShortId: string | null;
   isAuthModalOpen: boolean;
   authModalAction: string;
+  isSidebarOpen: boolean;
 }
 
 const initialState: UiState = {
@@ -18,6 +19,7 @@ const initialState: UiState = {
   commentsShortId: null,
   isAuthModalOpen: false,
   authModalAction: "interact with shorts",
+  isSidebarOpen: false,
 };
 
 export const uiSlice = createSlice({
@@ -52,6 +54,15 @@ export const uiSlice = createSlice({
       state.isAuthModalOpen = false;
       state.authModalAction = "interact with shorts";
     },
+    openSidebar: (state) => {
+      state.isSidebarOpen = true;
+    },
+    closeSidebar: (state) => {
+      state.isSidebarOpen = false;
+    },
+    toggleSidebar: (state) => {
+      state.isSidebarOpen = !state.isSidebarOpen;
+    },
   },
 });
 
@@ -64,6 +75,9 @@ export const {
   closeCommentsDrawer,
   openAuthModal,
   closeAuthModal,
+  openSidebar,
+  closeSidebar,
+  toggleSidebar,
 } = uiSlice.actions;
 
 export default uiSlice.reducer;

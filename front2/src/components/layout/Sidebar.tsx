@@ -1,16 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useAppDispatch, useAppSelector } from "../../redux/store";
 import { useCheckAuthQuery, useLogoutMutation } from "../../redux/api/authApi";
-import { setFeedType, openAuthModal, openUploadModal } from "../../redux/slices/uiSlice";
+import { 
+  setFeedType, 
+  openAuthModal, 
+  openUploadModal, 
+  openSidebar, 
+  closeSidebar 
+} from "../../redux/slices/uiSlice";
 import ThemeToggle from "./ThemeToggle";
 import VerifiedBadge from "../common/VerifiedBadge";
 import { 
   FiCompass, FiUsers, FiHome, FiTrendingUp, FiBookmark, 
-  FiPlus, FiSearch, FiLogOut, FiUser, FiPlay, FiLogIn 
+  FiPlus, FiSearch, FiLogOut, FiUser, FiPlay, FiLogIn,
+  FiMenu, FiX
 } from "react-icons/fi";
 
 export default function Sidebar() {
@@ -20,15 +27,38 @@ export default function Sidebar() {
   const { data: user } = useCheckAuthQuery();
   const [logout] = useLogoutMutation();
   const isAuthenticated = !!user;
-  const { feedType } = useAppSelector((state) => state.ui);
+  const { feedType, isSidebarOpen } = useAppSelector((state) => state.ui);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [dropdownOpen, setDropdownOpen] = useState(false);
+
+  // Auto-close mobile sidebar when navigating
+  useEffect(() => {
+    dispatch(closeSidebar());
+  }, [pathname, dispatch]);
+
+  // Close mobile sidebar on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isSidebarOpen) {
+        dispatch(closeSidebar());
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isSidebarOpen, dispatch]);
+
+  const handleNavClick = () => {
+    if (isSidebarOpen) {
+      dispatch(closeSidebar());
+    }
+  };
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
       router.push(`/explore?q=${encodeURIComponent(searchQuery.trim())}`);
+      handleNavClick();
     }
   };
 
@@ -36,6 +66,7 @@ export default function Sidebar() {
     try {
       await logout().unwrap();
       setDropdownOpen(false);
+      handleNavClick();
       router.push("/");
     } catch (err) {
       console.error("Logout failed", err);
@@ -74,24 +105,36 @@ export default function Sidebar() {
     { name: "tech", count: "5.4M" },
   ];
 
-  return (
-    <aside className="w-64 h-screen sticky top-0 border-r border-[var(--border-color)] bg-[var(--bg-surface)]/95 backdrop-blur-md p-4 hidden md:flex flex-col justify-between overflow-y-auto transition-colors z-40">
+  const renderSidebarContent = (isMobile = false) => (
+    <>
       <div className="space-y-6">
         
-        {/* 1. Brand Logo */}
-        <Link href="/" className="flex items-center gap-3 group px-2 pt-2">
-          <div className="relative w-9 h-9 rounded-xl bg-gradient-to-tr from-[var(--accent-primary)] via-rose-500 to-[var(--accent-secondary)] flex items-center justify-center text-white shadow-lg shadow-[var(--accent-primary)]/25 transition-all duration-300 group-hover:scale-105">
-            <FiPlay className="w-4 h-4 fill-current translate-x-0.5" />
-          </div>
-          <div className="flex flex-col">
-            <span className="font-black text-lg tracking-tight text-[var(--text-primary)] leading-none">
-              VIBE<span className="text-[var(--accent-primary)]">SHORTS</span>
-            </span>
-            <span className="text-[8px] font-bold uppercase tracking-widest text-[var(--text-muted)] leading-tight pt-0.5">
-              Pro Stream
-            </span>
-          </div>
-        </Link>
+        {/* 1. Brand Logo & Mobile Close Button */}
+        <div className="flex items-center justify-between px-2 pt-2">
+          <Link href="/" onClick={handleNavClick} className="flex items-center gap-3 group">
+            <div className="relative w-9 h-9 rounded-xl bg-gradient-to-tr from-[var(--accent-primary)] via-rose-500 to-[var(--accent-secondary)] flex items-center justify-center text-white shadow-lg shadow-[var(--accent-primary)]/25 transition-all duration-300 group-hover:scale-105">
+              <FiPlay className="w-4 h-4 fill-current translate-x-0.5" />
+            </div>
+            <div className="flex flex-col">
+              <span className="font-black text-lg tracking-tight text-[var(--text-primary)] leading-none">
+                VIBE<span className="text-[var(--accent-primary)]">SHORTS</span>
+              </span>
+              <span className="text-[8px] font-bold uppercase tracking-widest text-[var(--text-muted)] leading-tight pt-0.5">
+                Pro Stream
+              </span>
+            </div>
+          </Link>
+
+          {isMobile && (
+            <button
+              onClick={() => dispatch(closeSidebar())}
+              className="p-2 rounded-xl text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-elevated)] transition-colors cursor-pointer"
+              aria-label="Close menu"
+            >
+              <FiX className="w-5 h-5" />
+            </button>
+          )}
+        </div>
 
         {/* 2. Quick Search Bar inside Sidebar */}
         <form onSubmit={handleSearchSubmit} className="relative px-1">
@@ -138,6 +181,7 @@ export default function Sidebar() {
                   if (item.type) {
                     dispatch(setFeedType(item.type));
                   }
+                  handleNavClick();
                 }}
                 className={`relative flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 ${
                   isActive
@@ -157,6 +201,7 @@ export default function Sidebar() {
           {isAuthenticated && (
             <Link
               href={`/profile/${user?.username}`}
+              onClick={handleNavClick}
               className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-bold text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)] transition-all duration-200"
             >
               <FiBookmark className="w-4 h-4 text-amber-500" />
@@ -167,10 +212,13 @@ export default function Sidebar() {
 
         <hr className="border-[var(--border-color)] opacity-60" />
 
-        {/* 4. Upload Button (إذا كان مسجل دخول) */}
+        {/* 4. Upload Button */}
         {isAuthenticated && (
           <button
-            onClick={() => dispatch(openUploadModal())}
+            onClick={() => {
+              dispatch(openUploadModal());
+              handleNavClick();
+            }}
             className="w-full h-10 px-4 rounded-xl bg-gradient-to-r from-[var(--accent-primary)] via-rose-500 to-[var(--accent-secondary)] text-white text-xs font-bold flex items-center justify-center gap-2 shadow-md shadow-[var(--accent-primary)]/20 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
           >
             <FiPlus className="w-4 h-4 stroke-[3]" />
@@ -189,6 +237,7 @@ export default function Sidebar() {
               <Link
                 key={tag.name}
                 href={`/explore?tag=${tag.name}`}
+                onClick={handleNavClick}
                 className="group flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--bg-elevated)] transition-all"
               >
                 <span className="font-bold text-[var(--accent-secondary)] group-hover:text-[var(--accent-primary)]">
@@ -226,7 +275,10 @@ export default function Sidebar() {
                 </div>
                 <Link
                   href={`/profile/${user?.username}`}
-                  onClick={() => setDropdownOpen(false)}
+                  onClick={() => {
+                    setDropdownOpen(false);
+                    handleNavClick();
+                  }}
                   className="flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--bg-elevated)] rounded-xl"
                 >
                   <FiUser className="w-3.5 h-3.5 text-[var(--accent-primary)]" />
@@ -260,6 +312,7 @@ export default function Sidebar() {
         ) : (
           <Link
             href="/login"
+            onClick={handleNavClick}
             className="w-full h-9 rounded-xl bg-[var(--accent-primary)] text-white text-xs font-bold flex items-center justify-center gap-2 shadow-sm hover:opacity-95 transition-all"
           >
             <FiLogIn className="w-3.5 h-3.5" />
@@ -268,6 +321,41 @@ export default function Sidebar() {
         )}
 
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Floating / Fixed Hamburger Menu Button on Mobile Screens */}
+      <button
+        onClick={() => dispatch(openSidebar())}
+        className="md:hidden fixed top-3.5 left-3.5 z-40 p-2.5 rounded-full bg-[var(--bg-surface)]/90 backdrop-blur-md border border-[var(--border-color)] text-[var(--text-primary)] shadow-lg hover:bg-[var(--bg-elevated)] transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center"
+        aria-label="Open Navigation Menu"
+      >
+        <FiMenu className="w-5 h-5 text-[var(--accent-primary)]" />
+      </button>
+
+      {/* Backdrop Overlay for Mobile Drawer */}
+      {isSidebarOpen && (
+        <div
+          onClick={() => dispatch(closeSidebar())}
+          className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 md:hidden animate-in fade-in duration-200"
+        />
+      )}
+
+      {/* Mobile Slide-Over Drawer Sidebar */}
+      <aside
+        className={`fixed top-0 left-0 bottom-0 w-72 max-w-[85vw] h-full bg-[var(--bg-surface)] border-r border-[var(--border-color)] p-4 flex flex-col justify-between overflow-y-auto z-50 md:hidden transition-transform duration-300 ease-in-out shadow-2xl ${
+          isSidebarOpen ? "translate-x-0" : "-translate-x-full pointer-events-none"
+        }`}
+      >
+        {renderSidebarContent(true)}
+      </aside>
+
+      {/* Desktop Sticky Sidebar */}
+      <aside className="w-64 h-screen sticky top-0 border-r border-[var(--border-color)] bg-[var(--bg-surface)]/95 backdrop-blur-md p-4 hidden md:flex flex-col justify-between overflow-y-auto transition-colors z-40">
+        {renderSidebarContent(false)}
+      </aside>
+    </>
   );
 }
