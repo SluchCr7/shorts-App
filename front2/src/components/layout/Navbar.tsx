@@ -109,7 +109,7 @@ export default function Navbar() {
                   <div className="px-3.5 py-3 border-b border-[var(--border-color)] mb-1 bg-[var(--bg-elevated)]/40 rounded-xl">
                     <div className="flex items-center gap-1.5 min-w-0">
                       <p className="font-extrabold text-sm text-[var(--text-primary)] truncate">{user?.fullName}</p>
-                      {(user?.isVerify ?? user?.isVerified) && <VerifiedBadge size="xs" />}
+                      {user?.isVerified && <VerifiedBadge size="xs" />}
                     </div>
                     <p className="text-xs font-medium text-[var(--text-secondary)] truncate">@{user?.username}</p>
                   </div>

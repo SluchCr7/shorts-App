@@ -15,7 +15,7 @@ const getShortComments = asyncHandler(async (req, res) => {
   const skip = (page - 1) * limit;
 
   const comments = await Comment.find({ short: shortId, parentComment: null })
-    .populate("user", "username fullName avatar isVerified isVerify")
+    .populate("user", "username fullName avatar isVerified")
     .skip(skip)
     .limit(limit)
     .sort({ createdAt: -1 });
@@ -93,7 +93,7 @@ const addComment = asyncHandler(async (req, res) => {
 
   const populatedComment = await Comment.findById(comment._id).populate(
     "user",
-    "username fullName avatar isVerified isVerify"
+    "username fullName avatar isVerified"
   );
 
   return res
@@ -209,7 +209,7 @@ const getCommentReplies = asyncHandler(async (req, res) => {
   const skip = (page - 1) * limit;
 
   const replies = await Comment.find({ parentComment: commentId })
-    .populate("user", "username fullName avatar isVerified isVerify")
+    .populate("user", "username fullName avatar isVerified")
     .skip(skip)
     .limit(limit)
     .sort({ createdAt: 1 });

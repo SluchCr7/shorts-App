@@ -93,7 +93,7 @@ const uploadShort = asyncHandler(async (req, res) => {
 
   const populatedShort = await Short.findById(short._id).populate(
     "owner",
-    "username fullName avatar isVerified isVerify"
+    "username fullName avatar isVerified"
   );
 
   return res
@@ -124,7 +124,7 @@ const getShortsFeed = asyncHandler(async (req, res) => {
   }
 
   const shorts = await Short.find(query)
-    .populate("owner", "username fullName avatar isVerified isVerify bio")
+    .populate("owner", "username fullName avatar isVerified bio")
     .populate("sound", "title audioUrl duration")
     .skip(skip)
     .limit(limit)
@@ -153,7 +153,7 @@ const getShortsFeed = asyncHandler(async (req, res) => {
 // @access  Public (Optional Auth)
 const getShortById = asyncHandler(async (req, res) => {
   const short = await Short.findById(req.params.id)
-    .populate("owner", "username fullName avatar isVerified isVerify bio followersCount")
+    .populate("owner", "username fullName avatar isVerified bio followersCount")
     .populate("sound", "title audioUrl creator duration");
 
   if (!short) {
@@ -225,7 +225,7 @@ const updateShort = asyncHandler(async (req, res) => {
     req.params.id,
     { $set: updateFields },
     { new: true, runValidators: true }
-  ).populate("owner", "username fullName avatar isVerified isVerify");
+  ).populate("owner", "username fullName avatar isVerified");
 
   return res
     .status(200)
@@ -290,7 +290,7 @@ const searchShorts = asyncHandler(async (req, res) => {
   }
 
   const shorts = await Short.find(query)
-    .populate("owner", "username fullName avatar isVerified isVerify")
+    .populate("owner", "username fullName avatar isVerified")
     .skip(skip)
     .limit(limit)
     .sort({ createdAt: -1 });

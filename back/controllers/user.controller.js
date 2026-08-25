@@ -54,19 +54,13 @@ const getUserProfile = asyncHandler(async (req, res) => {
 // @route   PATCH /api/v1/users/profile
 // @access  Private
 const updateAccountDetails = asyncHandler(async (req, res) => {
-  const { fullName, bio, website, isVerify, isVerified } = req.body;
+  const { fullName, bio, website, isVerified } = req.body;
 
   const updateFields = {};
   if (fullName !== undefined) updateFields.fullName = fullName;
   if (bio !== undefined) updateFields.bio = bio;
   if (website !== undefined) updateFields.website = website;
-  if (isVerify !== undefined) {
-    updateFields.isVerify = Boolean(isVerify);
-    updateFields.isVerified = Boolean(isVerify);
-  } else if (isVerified !== undefined) {
-    updateFields.isVerified = Boolean(isVerified);
-    updateFields.isVerify = Boolean(isVerified);
-  }
+  if (isVerified !== undefined) updateFields.isVerified = Boolean(isVerified);
 
   const user = await User.findByIdAndUpdate(
     req.user._id,
@@ -208,7 +202,7 @@ const getUserFollowers = asyncHandler(async (req, res) => {
   const skip = (page - 1) * limit;
 
   const followers = await Follow.find({ following: req.params.id })
-    .populate("follower", "username fullName avatar isVerified isVerify bio")
+    .populate("follower", "username fullName avatar isVerified bio")
     .skip(skip)
     .limit(limit)
     .sort({ createdAt: -1 });
@@ -239,7 +233,7 @@ const getUserFollowing = asyncHandler(async (req, res) => {
   const skip = (page - 1) * limit;
 
   const following = await Follow.find({ follower: req.params.id })
-    .populate("following", "username fullName avatar isVerified isVerify bio")
+    .populate("following", "username fullName avatar isVerified bio")
     .skip(skip)
     .limit(limit)
     .sort({ createdAt: -1 });
@@ -277,7 +271,7 @@ const getUserShorts = asyncHandler(async (req, res) => {
   }
 
   const shorts = await Short.find(query)
-    .populate("owner", "username fullName avatar isVerified isVerify")
+    .populate("owner", "username fullName avatar isVerified")
     .skip(skip)
     .limit(limit)
     .sort({ createdAt: -1 });
@@ -310,7 +304,7 @@ const getUserLikedShorts = asyncHandler(async (req, res) => {
   const likes = await Like.find({ user: req.params.id, short: { $ne: null } })
     .populate({
       path: "short",
-      populate: { path: "owner", select: "username fullName avatar isVerified isVerify" },
+      populate: { path: "owner", select: "username fullName avatar isVerified" },
     })
     .skip(skip)
     .limit(limit)
@@ -345,7 +339,7 @@ const getUserSavedShorts = asyncHandler(async (req, res) => {
   const saves = await Save.find({ user: req.user._id })
     .populate({
       path: "short",
-      populate: { path: "owner", select: "username fullName avatar isVerified isVerify" },
+      populate: { path: "owner", select: "username fullName avatar isVerified" },
     })
     .skip(skip)
     .limit(limit)
@@ -380,12 +374,11 @@ const verifyAccount = asyncHandler(async (req, res) => {
     throw new ApiError(404, "User not found");
   }
 
-  if (user.isVerified || user.isVerify) {
+  if (user.isVerified) {
     throw new ApiError(400, "User is already verified");
   }
 
   user.isVerified = true;
-  user.isVerify = true;
   await user.save();
 
   return res

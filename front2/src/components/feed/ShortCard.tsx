@@ -151,7 +151,7 @@ export default function ShortCard({ short, isActive }: ShortCardProps) {
           <span className="font-bold text-base tracking-tight hover:underline text-white drop-shadow-md">
             @{short.owner?.username}
           </span>
-          {(short.owner?.isVerify ?? short.owner?.isVerified) && (
+          {short.owner?.isVerified && (
             <VerifiedBadge size="sm" className="drop-shadow-md" />
           )}
         </Link>

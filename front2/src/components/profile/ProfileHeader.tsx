@@ -117,13 +117,13 @@ export default function ProfileHeader({ profileUser, isSelf, initialIsFollowing 
               <h1 className="text-2xl sm:text-3xl font-black text-[var(--text-primary)] tracking-tight">
                 {profileUser.fullName}
               </h1>
-              {(profileUser.isVerify ?? profileUser.isVerified) && (
+              {profileUser.isVerified && (
                 <VerifiedBadge size="lg" />
               )}
             </div>
             <div className="flex items-center gap-1.5 mt-0.5">
               <p className="text-sm font-semibold text-[var(--text-secondary)]">@{profileUser.username}</p>
-              {(profileUser.isVerify ?? profileUser.isVerified) && (
+              {profileUser.isVerified && (
                 <VerifiedBadge size="sm" />
               )}
             </div>

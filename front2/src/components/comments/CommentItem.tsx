@@ -118,7 +118,7 @@ export default function CommentItem({ comment, shortId, depth = 0 }: CommentItem
               >
                 @{comment.user?.username}
               </Link>
-              {(comment.user?.isVerify ?? comment.user?.isVerified) && (
+              {comment.user?.isVerified && (
                 <VerifiedBadge size="xs" />
               )}
             </div>

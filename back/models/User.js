@@ -62,10 +62,6 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
-    isVerify: {
-      type: Boolean,
-      default: false,
-    },
     refreshToken: {
       type: String,
       default: "",
@@ -92,13 +88,8 @@ const userSchema = new mongoose.Schema(
   }
 );
 
-// Sync isVerify and isVerified, and Hash password before saving if modified
+// Hash password before saving if modified
 userSchema.pre("save", async function () {
-  if (this.isModified("isVerify")) {
-    this.isVerified = this.isVerify;
-  } else if (this.isModified("isVerified")) {
-    this.isVerify = this.isVerified;
-  }
   if (!this.isModified("password")) return;
   this.password = await bcrypt.hash(this.password, 10);
 });
