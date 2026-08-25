@@ -4,7 +4,8 @@ import { useState } from "react";
 import { useAppDispatch, useAppSelector } from "../../redux/store";
 import { closeUploadModal } from "../../redux/slices/uiSlice";
 import { useUploadShortMutation } from "../../redux/api/shortsApi";
-import { FiX, FiUploadCloud, FiFilm, FiImage } from "react-icons/fi";
+import { MAIN_STATIC_HASHTAGS } from "../../constants/hashtags";
+import { FiX, FiUploadCloud, FiFilm, FiImage, FiHash } from "react-icons/fi";
 
 export default function UploadModal() {
   const dispatch = useAppDispatch();
@@ -159,8 +160,9 @@ export default function UploadModal() {
 
           {/* Description & Hashtags */}
           <div>
-            <label className="block text-[11px] font-extrabold uppercase tracking-wider text-[var(--text-secondary)] mb-1.5">
-              Description & Hashtags
+            <label className="block text-[11px] font-extrabold uppercase tracking-wider text-[var(--text-secondary)] mb-1.5 flex items-center justify-between">
+              <span>Description & Hashtags</span>
+              <span className="text-[10px] text-[var(--text-muted)] font-normal">Click a hashtag below to add</span>
             </label>
             <textarea
               placeholder="Describe your short... Use #hashtags to increase reach!"
@@ -169,6 +171,28 @@ export default function UploadModal() {
               rows={3}
               className="w-full p-4 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-color)] text-sm text-[var(--text-primary)] font-medium focus:outline-none focus:border-[var(--accent-primary)] focus:ring-2 focus:ring-[var(--accent-primary)]/20 transition-all resize-none"
             />
+            {/* Quick Main Hashtags Bar */}
+            <div className="mt-2.5 flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+              <span className="text-[10px] font-bold text-[var(--text-muted)] shrink-0 flex items-center gap-1">
+                <FiHash className="w-3 h-3 text-[var(--accent-primary)]" />
+                Quick Hashtags:
+              </span>
+              {MAIN_STATIC_HASHTAGS.slice(0, 10).map((tag) => (
+                <button
+                  type="button"
+                  key={tag.name}
+                  onClick={() => {
+                    const tagToAdd = `#${tag.name}`;
+                    if (!description.includes(tagToAdd)) {
+                      setDescription((prev) => (prev ? `${prev.trim()} ${tagToAdd}` : tagToAdd));
+                    }
+                  }}
+                  className="px-2.5 py-1 rounded-lg bg-[var(--bg-elevated)] hover:bg-[var(--accent-primary)]/20 hover:text-[var(--accent-primary)] border border-[var(--border-color)] text-[11px] font-bold text-[var(--text-secondary)] transition-all cursor-pointer whitespace-nowrap shrink-0"
+                >
+                  {tag.icon} {tag.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Thumbnail & Privacy */}
