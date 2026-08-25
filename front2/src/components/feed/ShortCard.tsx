@@ -8,6 +8,7 @@ import { useToggleLikeShortMutation, useIncrementViewsMutation } from "../../red
 import { openAuthModal } from "../../redux/slices/uiSlice";
 import { Short } from "../../types";
 import ShortSidebar from "./ShortSidebar";
+import VerifiedBadge from "../common/VerifiedBadge";
 import { FiVolume2, FiVolumeX, FiPlay, FiMusic, FiHeart } from "react-icons/fi";
 
 interface ShortCardProps {
@@ -146,14 +147,12 @@ export default function ShortCard({ short, isActive }: ShortCardProps) {
 
       {/* Video Information Overlay (Bottom Left) */}
       <div className="absolute left-4 bottom-5 right-20 z-30 text-white pointer-events-auto space-y-2">
-        <Link href={`/profile/${short.owner?.username}`} className="inline-flex items-center gap-2 group/author">
+        <Link href={`/profile/${short.owner?.username}`} className="inline-flex items-center gap-1.5 group/author">
           <span className="font-bold text-base tracking-tight hover:underline text-white drop-shadow-md">
             @{short.owner?.username}
           </span>
-          {short.owner?.isVerified && (
-            <span className="px-1.5 py-0.5 rounded-full bg-[var(--accent-cyan)]/20 border border-[var(--accent-cyan)]/40 text-[var(--accent-cyan)] flex items-center justify-center font-black text-[10px]">
-              ✓
-            </span>
+          {(short.owner?.isVerify ?? short.owner?.isVerified) && (
+            <VerifiedBadge size="sm" className="drop-shadow-md" />
           )}
         </Link>
 

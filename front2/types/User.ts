@@ -11,6 +11,7 @@ export interface UserSummary {
   name: string;
   profilePic: string;
   isVerified: boolean;
+  isVerify?: boolean;
 }
 
 export interface User {
@@ -22,6 +23,7 @@ export interface User {
   profilePic: string;
   coverImage?: string;
   isVerified: boolean;
+  isVerify?: boolean;
   followers?: UserSummary[];
   following?: UserSummary[];
   followersCount: number;
@@ -41,6 +43,7 @@ export interface AuthUser {
   email: string;
   profilePic: string;
   isVerified: boolean;
+  isVerify?: boolean;
   token?: string;
 }
 

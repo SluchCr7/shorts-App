@@ -7,6 +7,7 @@ import { useAppDispatch } from "../../redux/store";
 import { useCheckAuthQuery, useLogoutMutation } from "../../redux/api/authApi";
 import { openUploadModal } from "../../redux/slices/uiSlice";
 import ThemeToggle from "./ThemeToggle";
+import VerifiedBadge from "../common/VerifiedBadge";
 import { FiPlus, FiSearch, FiLogOut, FiUser, FiPlay, FiLogIn } from "react-icons/fi";
 
 export default function Navbar() {
@@ -106,7 +107,10 @@ export default function Navbar() {
               {dropdownOpen && (
                 <div className="absolute right-0 mt-2.5 w-60 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-color)] shadow-2xl p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200 backdrop-blur-xl">
                   <div className="px-3.5 py-3 border-b border-[var(--border-color)] mb-1 bg-[var(--bg-elevated)]/40 rounded-xl">
-                    <p className="font-extrabold text-sm text-[var(--text-primary)] truncate">{user?.fullName}</p>
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <p className="font-extrabold text-sm text-[var(--text-primary)] truncate">{user?.fullName}</p>
+                      {(user?.isVerify ?? user?.isVerified) && <VerifiedBadge size="xs" />}
+                    </div>
                     <p className="text-xs font-medium text-[var(--text-secondary)] truncate">@{user?.username}</p>
                   </div>
                   <Link

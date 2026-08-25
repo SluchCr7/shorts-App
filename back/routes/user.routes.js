@@ -12,6 +12,7 @@ const {
   getUserShorts,
   getUserLikedShorts,
   getUserSavedShorts,
+  verifyAccount,
 } = require("../controllers/user.controller");
 const { verifyJWT, optionalAuth } = require("../middlewares/auth.middleware");
 const upload = require("../middlewares/upload.middleware");
@@ -36,5 +37,8 @@ router.get("/saved/shorts", verifyJWT, getUserSavedShorts);
 // Follow / Unfollow
 router.post("/:id/follow", verifyJWT, followUser);
 router.post("/:id/unfollow", verifyJWT, unfollowUser);
+
+// Verify account
+router.post("/verify", verifyJWT, verifyAccount);
 
 module.exports = router;

@@ -5,6 +5,7 @@ import { User } from "../../types";
 import { useCheckAuthQuery } from "../../redux/api/authApi";
 import { useToggleFollowUserMutation } from "../../redux/api/usersApi";
 import EditProfileModal from "./EditProfileModal";
+import VerifiedBadge from "../common/VerifiedBadge";
 import { FiCheck, FiPlus, FiGlobe, FiUsers, FiHeart, FiVideo, FiEdit3, FiCamera } from "react-icons/fi";
 
 interface ProfileHeaderProps {
@@ -112,17 +113,20 @@ export default function ProfileHeader({ profileUser, isSelf, initialIsFollowing 
         {/* User Details */}
         <div className="space-y-3.5">
           <div>
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2">
               <h1 className="text-2xl sm:text-3xl font-black text-[var(--text-primary)] tracking-tight">
                 {profileUser.fullName}
               </h1>
-              {profileUser.isVerified && (
-                <span className="px-2 py-0.5 rounded-full bg-[var(--accent-cyan)]/15 border border-[var(--accent-cyan)]/30 text-[var(--accent-cyan)] flex items-center justify-center font-black text-xs">
-                  ✓ Verified
-                </span>
+              {(profileUser.isVerify ?? profileUser.isVerified) && (
+                <VerifiedBadge size="lg" />
               )}
             </div>
-            <p className="text-sm font-semibold text-[var(--text-secondary)]">@{profileUser.username}</p>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <p className="text-sm font-semibold text-[var(--text-secondary)]">@{profileUser.username}</p>
+              {(profileUser.isVerify ?? profileUser.isVerified) && (
+                <VerifiedBadge size="sm" />
+              )}
+            </div>
           </div>
 
           {profileUser.bio && (

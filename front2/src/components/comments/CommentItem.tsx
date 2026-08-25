@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Comment } from "../../types";
+import VerifiedBadge from "../common/VerifiedBadge";
 import { useAppDispatch } from "../../redux/store";
 import { useCheckAuthQuery } from "../../redux/api/authApi";
 import { openAuthModal } from "../../redux/slices/uiSlice";
@@ -117,10 +118,8 @@ export default function CommentItem({ comment, shortId, depth = 0 }: CommentItem
               >
                 @{comment.user?.username}
               </Link>
-              {comment.user?.isVerified && (
-                <span className="w-3.5 h-3.5 rounded-full bg-[var(--accent-cyan)] text-slate-950 flex items-center justify-center font-bold text-[9px]">
-                  ✓
-                </span>
+              {(comment.user?.isVerify ?? comment.user?.isVerified) && (
+                <VerifiedBadge size="xs" />
               )}
             </div>
 
