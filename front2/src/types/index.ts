@@ -40,6 +40,7 @@ export interface Short {
   commentsCount: number;
   savesCount: number;
   sharesCount: number;
+  originalShort?: Short | null;
   sound?: Sound | null;
   hashtags: string[];
   privacy: "public" | "private" | "unlisted";

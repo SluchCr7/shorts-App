@@ -272,6 +272,10 @@ const getUserShorts = asyncHandler(async (req, res) => {
 
   const shorts = await Short.find(query)
     .populate("owner", "username fullName avatar isVerified")
+    .populate({
+      path: "originalShort",
+      populate: { path: "owner", select: "username fullName avatar isVerified" },
+    })
     .skip(skip)
     .limit(limit)
     .sort({ createdAt: -1 });
@@ -304,7 +308,13 @@ const getUserLikedShorts = asyncHandler(async (req, res) => {
   const likes = await Like.find({ user: req.params.id, short: { $ne: null } })
     .populate({
       path: "short",
-      populate: { path: "owner", select: "username fullName avatar isVerified" },
+      populate: [
+        { path: "owner", select: "username fullName avatar isVerified" },
+        {
+          path: "originalShort",
+          populate: { path: "owner", select: "username fullName avatar isVerified" },
+        },
+      ],
     })
     .skip(skip)
     .limit(limit)
@@ -339,7 +349,13 @@ const getUserSavedShorts = asyncHandler(async (req, res) => {
   const saves = await Save.find({ user: req.user._id })
     .populate({
       path: "short",
-      populate: { path: "owner", select: "username fullName avatar isVerified" },
+      populate: [
+        { path: "owner", select: "username fullName avatar isVerified" },
+        {
+          path: "originalShort",
+          populate: { path: "owner", select: "username fullName avatar isVerified" },
+        },
+      ],
     })
     .skip(skip)
     .limit(limit)

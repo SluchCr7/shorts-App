@@ -51,7 +51,7 @@ router.delete("/:id", verifyJWT, deleteShort);
 
 // Views & Shares
 router.post("/:id/view", incrementShortView);
-router.post("/:id/share", shareShort);
+router.post("/:id/share", optionalAuth, shareShort);
 
 // Interactions (Likes & Saves)
 router.post("/:id/like", verifyJWT, likeShort);

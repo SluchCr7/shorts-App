@@ -125,6 +125,10 @@ const getShortsFeed = asyncHandler(async (req, res) => {
 
   const shorts = await Short.find(query)
     .populate("owner", "username fullName avatar isVerified bio")
+    .populate({
+      path: "originalShort",
+      populate: { path: "owner", select: "username fullName avatar isVerified" },
+    })
     .populate("sound", "title audioUrl duration")
     .skip(skip)
     .limit(limit)
@@ -154,6 +158,10 @@ const getShortsFeed = asyncHandler(async (req, res) => {
 const getShortById = asyncHandler(async (req, res) => {
   const short = await Short.findById(req.params.id)
     .populate("owner", "username fullName avatar isVerified bio followersCount")
+    .populate({
+      path: "originalShort",
+      populate: { path: "owner", select: "username fullName avatar isVerified" },
+    })
     .populate("sound", "title audioUrl creator duration");
 
   if (!short) {
@@ -291,6 +299,10 @@ const searchShorts = asyncHandler(async (req, res) => {
 
   const shorts = await Short.find(query)
     .populate("owner", "username fullName avatar isVerified")
+    .populate({
+      path: "originalShort",
+      populate: { path: "owner", select: "username fullName avatar isVerified" },
+    })
     .skip(skip)
     .limit(limit)
     .sort({ createdAt: -1 });

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Short } from "../../types";
 import { useCheckAuthQuery } from "../../redux/api/authApi";
 import { useDeleteShortMutation } from "../../redux/api/shortsApi";
-import { FiPlay, FiHeart, FiTrash2, FiAlertTriangle, FiX } from "react-icons/fi";
+import { FiPlay, FiHeart, FiTrash2, FiAlertTriangle, FiX, FiRepeat } from "react-icons/fi";
 
 interface VideoGridProps {
   shorts: Short[];
@@ -59,6 +59,15 @@ export default function VideoGrid({ shorts, emptyMessage = "No shorts uploaded y
 
               <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-85 group-hover:opacity-100 transition-opacity p-3 sm:p-4 flex flex-col justify-between text-white">
                 <div className="flex justify-between items-center w-full">
+                  {short.originalShort ? (
+                    <span className="px-2 py-0.5 rounded-full bg-cyan-500/25 backdrop-blur-md text-[9px] font-black text-cyan-300 border border-cyan-400/40 flex items-center gap-1 shadow-sm">
+                      <FiRepeat className="w-2.5 h-2.5" />
+                      Repost
+                    </span>
+                  ) : (
+                    <div />
+                  )}
+
                   {isOwner && (
                     <button
                       type="button"

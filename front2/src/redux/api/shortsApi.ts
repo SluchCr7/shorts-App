@@ -165,6 +165,39 @@ export const shortsApi = baseApi.injectEndpoints({
         "User",
       ],
     }),
+
+    shareShort: builder.mutation<{ sharesCount: number; sharedShort?: Short }, { shortId: string; feedType?: "for-you" | "following" }>({
+      query: ({ shortId }) => ({
+        url: `/shorts/${shortId}/share`,
+        method: "POST",
+      }),
+      async onQueryStarted({ shortId, feedType = "for-you" }, { dispatch, queryFulfilled }) {
+        const patchFeed = dispatch(
+          shortsApi.util.updateQueryData("getShortsFeed", { type: feedType, page: 1 }, (draft) => {
+            const target = draft.shorts.find((s) => s._id === shortId);
+            if (target) {
+              target.sharesCount = (target.sharesCount || 0) + 1;
+            }
+          })
+        );
+
+        const patchSingle = dispatch(
+          shortsApi.util.updateQueryData("getShortById", shortId, (draft) => {
+            if (draft) {
+              draft.sharesCount = (draft.sharesCount || 0) + 1;
+            }
+          })
+        );
+
+        try {
+          await queryFulfilled;
+        } catch {
+          patchFeed.undo();
+          patchSingle.undo();
+        }
+      },
+      invalidatesTags: [{ type: "Short", id: "LIST" }, "User"],
+    }),
   }),
 });
 
@@ -177,4 +210,5 @@ export const {
   useUploadShortMutation,
   useIncrementViewsMutation,
   useDeleteShortMutation,
+  useShareShortMutation,
 } = shortsApi;

@@ -28,6 +28,11 @@ const shortSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    originalShort: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref : "Short",
+      default : null,
+    },
     thumbnailUrl: {
       type: String,
       required: [true, "Thumbnail URL is required"],

@@ -166,20 +166,61 @@ const unsaveShort = asyncHandler(async (req, res) => {
 // @route   POST /api/v1/shorts/:id/share
 // @access  Public
 const shareShort = asyncHandler(async (req, res) => {
-  const short = await Short.findByIdAndUpdate(
-    req.params.id,
-    { $inc: { sharesCount: 1 } },
-    { new: true }
-  ).select("sharesCount");
+  const targetShort = await Short.findById(req.params.id);
 
-  if (!short) {
+  if (!targetShort) {
     throw new ApiError(404, "Short video not found");
   }
 
-  return res
-    .status(200)
-    .json(new ApiResponse(200, { sharesCount: short.sharesCount }, "Share count updated"));
+  // Increment sharesCount on target short
+  targetShort.sharesCount = (targetShort.sharesCount || 0) + 1;
+  await targetShort.save();
+
+  let sharedShortDoc = null;
+
+  // If user is authenticated, create a reposted Short document in their account
+  if (req.user) {
+    // Resolve root original short so nested reposts point to original creator
+    const rootOriginalId = targetShort.originalShort || targetShort._id;
+
+    const newShort = await Short.create({
+      owner: req.user._id,
+      title: req.body.title || targetShort.title,
+      description: req.body.description || targetShort.description,
+      videoUrl: targetShort.videoUrl,
+      videoPublicId: targetShort.videoPublicId,
+      thumbnailUrl: targetShort.thumbnailUrl,
+      thumbnailPublicId: targetShort.thumbnailPublicId,
+      duration: targetShort.duration,
+      sound: targetShort.sound,
+      hashtags: targetShort.hashtags,
+      originalShort: rootOriginalId,
+      privacy: "public",
+    });
+
+    // Increment shorts count for sharing user
+    await User.findByIdAndUpdate(req.user._id, { $inc: { shortsCount: 1 } });
+
+    sharedShortDoc = await Short.findById(newShort._id)
+      .populate("owner", "username fullName avatar isVerified")
+      .populate({
+        path: "originalShort",
+        populate: { path: "owner", select: "username fullName avatar isVerified" },
+      });
+  }
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        sharesCount: targetShort.sharesCount,
+        sharedShort: sharedShortDoc,
+      },
+      "Short shared successfully"
+    )
+  );
 });
+
 
 module.exports = {
   likeShort,

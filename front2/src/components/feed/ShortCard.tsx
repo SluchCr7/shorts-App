@@ -147,14 +147,28 @@ export default function ShortCard({ short, isActive }: ShortCardProps) {
 
       {/* Video Information Overlay (Bottom Left) */}
       <div className="absolute left-4 bottom-5 right-20 z-30 text-white pointer-events-auto space-y-2">
-        <Link href={`/profile/${short.owner?.username}`} className="inline-flex items-center gap-1.5 group/author">
-          <span className="font-bold text-base tracking-tight hover:underline text-white drop-shadow-md">
-            @{short.owner?.username}
-          </span>
-          {short.owner?.isVerified && (
-            <VerifiedBadge size="sm" className="drop-shadow-md" />
-          )}
-        </Link>
+        {short.originalShort && short.originalShort.owner ? (
+          <div className="flex items-center gap-1.5 flex-wrap text-sm text-slate-100 drop-shadow-md">
+            <Link href={`/profile/${short.owner?.username}`} className="inline-flex items-center gap-1 group/author font-extrabold text-white hover:underline">
+              <span>@{short.owner?.username}</span>
+              {short.owner?.isVerified && <VerifiedBadge size="sm" className="drop-shadow-md" />}
+            </Link>
+            <span className="text-[11px] font-bold text-slate-300 px-1.5 py-0.5 rounded-md bg-black/40 backdrop-blur-xs border border-white/10">from</span>
+            <Link href={`/profile/${short.originalShort.owner?.username}`} className="inline-flex items-center gap-1 group/original font-extrabold text-[var(--accent-cyan)] hover:underline">
+              <span>@{short.originalShort.owner?.username}</span>
+              {short.originalShort.owner?.isVerified && <VerifiedBadge size="sm" className="drop-shadow-md" />}
+            </Link>
+          </div>
+        ) : (
+          <Link href={`/profile/${short.owner?.username}`} className="inline-flex items-center gap-1.5 group/author">
+            <span className="font-bold text-base tracking-tight hover:underline text-white drop-shadow-md">
+              @{short.owner?.username}
+            </span>
+            {short.owner?.isVerified && (
+              <VerifiedBadge size="sm" className="drop-shadow-md" />
+            )}
+          </Link>
+        )}
 
         {/* Title & Description */}
         <p className="text-sm font-medium line-clamp-2 leading-relaxed drop-shadow-md text-slate-100">
