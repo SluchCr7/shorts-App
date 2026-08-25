@@ -99,6 +99,20 @@ body {
   box-shadow: var(--card-shadow);
 }
 
+.glass-pill {
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.dark .glass-pill {
+  background: rgba(10, 12, 20, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
 .glow-accent {
   box-shadow: 0 0 25px var(--glow-primary);
 }
@@ -144,4 +158,47 @@ body {
   background-size: 200% 100%;
   animation: shimmer 1.8s infinite;
 }
+
+@keyframes heart-pop {
+  0% {
+    transform: scale(0.3) rotate(-10deg);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.25) rotate(0deg);
+    opacity: 1;
+  }
+  75% {
+    transform: scale(1.1) rotate(5deg);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1.5) rotate(0deg);
+    opacity: 0;
+  }
+}
+
+.animate-heart-pop {
+  animation: heart-pop 0.8s cubic-bezier(0.17, 0.89, 0.32, 1.28) forwards;
+}
+
+@keyframes marquee {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  display: inline-block;
+  white-space: nowrap;
+  animation: marquee 12s linear infinite;
+}
+
+.animate-marquee:hover {
+  animation-play-state: paused;
+}
+
 

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ReduxProvider } from "../src/redux/provider";
-import Navbar from "../src/components/layout/Navbar";
+import MobileNav from "../src/components/layout/MobileNav";
 import Sidebar from "../src/components/layout/Sidebar";
 import UploadModal from "../src/components/upload/UploadModal";
 import CommentsDrawer from "../src/components/comments/CommentsDrawer";
@@ -30,10 +30,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased dark`}>
-      <body className="min-h-full flex flex-col bg-[var(--bg-primary)] text-[var(--text-primary)] transition-colors">
+      <body className="min-h-full flex flex-col bg-[var(--bg-primary)] text-[var(--text-primary)] transition-colors pb-16 md:pb-0">
         <ReduxProvider>
-          {/* <Navbar /> */}
-          <div className="flex flex-1 w-full">
+          <MobileNav />
+          <div className="flex flex-1 w-full min-h-screen">
             <Sidebar />
             <main className="flex-1 w-full min-w-0">{children}</main>
           </div>

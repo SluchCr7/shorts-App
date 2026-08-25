@@ -9,14 +9,15 @@ import { openAuthModal } from "../../redux/slices/uiSlice";
 import { Short } from "../../types";
 import ShortSidebar from "./ShortSidebar";
 import VerifiedBadge from "../common/VerifiedBadge";
-import { FiVolume2, FiVolumeX, FiPlay, FiMusic, FiHeart } from "react-icons/fi";
+import { FiVolume2, FiVolumeX, FiPlay, FiMusic, FiHeart, FiFastForward } from "react-icons/fi";
 
 interface ShortCardProps {
   short: Short;
   isActive: boolean;
+  shouldRenderVideo?: boolean;
 }
 
-export default function ShortCard({ short, isActive }: ShortCardProps) {
+export default function ShortCard({ short, isActive, shouldRenderVideo = true }: ShortCardProps) {
   const dispatch = useAppDispatch();
   const { feedType } = useAppSelector((state) => state.ui);
   const { data: user } = useCheckAuthQuery();
@@ -26,16 +27,18 @@ export default function ShortCard({ short, isActive }: ShortCardProps) {
   const [incrementViews] = useIncrementViewsMutation();
 
   const videoRef = useRef<HTMLVideoElement>(null);
+  const timelineRef = useRef<HTMLDivElement>(null);
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
+  const [playbackRate, setPlaybackRate] = useState<number>(1);
   const [progress, setProgress] = useState(0);
   const [showHeartAnim, setShowHeartAnim] = useState(false);
 
   // Auto-play / pause when active in viewport
   useEffect(() => {
     const video = videoRef.current;
-    if (!video) return;
+    if (!video || !shouldRenderVideo) return;
 
     if (isActive) {
       const playPromise = video.play();
@@ -53,7 +56,14 @@ export default function ShortCard({ short, isActive }: ShortCardProps) {
       video.pause();
       setIsPlaying(false);
     }
-  }, [isActive, short._id, feedType, incrementViews]);
+  }, [isActive, shouldRenderVideo, short._id, feedType, incrementViews]);
+
+  // Apply playback speed
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.playbackRate = playbackRate;
+    }
+  }, [playbackRate]);
 
   // Track progress
   const handleTimeUpdate = () => {
@@ -64,9 +74,20 @@ export default function ShortCard({ short, isActive }: ShortCardProps) {
     }
   };
 
-  // Click video to toggle play/pause
+  // Click timeline to seek video
+  const handleTimelineClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    e.stopPropagation();
+    if (!videoRef.current || !timelineRef.current) return;
+    const rect = timelineRef.current.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const percentage = Math.max(0, Math.min(1, clickX / rect.width));
+    videoRef.current.currentTime = percentage * (videoRef.current.duration || 0);
+    setProgress(percentage * 100);
+  };
+
+  // Toggle play / pause
   const handleVideoClick = () => {
-    if (!videoRef.current) return;
+    if (!videoRef.current || !shouldRenderVideo) return;
     if (isPlaying) {
       videoRef.current.pause();
       setIsPlaying(false);
@@ -84,7 +105,7 @@ export default function ShortCard({ short, isActive }: ShortCardProps) {
       return;
     }
     setShowHeartAnim(true);
-    setTimeout(() => setShowHeartAnim(false), 800);
+    setTimeout(() => setShowHeartAnim(false), 900);
     if (!short.isLiked) {
       toggleLikeShort({ short, feedType });
     }
@@ -98,27 +119,46 @@ export default function ShortCard({ short, isActive }: ShortCardProps) {
     }
   };
 
+  const cyclePlaybackRate = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const speeds = [1, 1.25, 1.5, 2];
+    const nextIndex = (speeds.indexOf(playbackRate) + 1) % speeds.length;
+    setPlaybackRate(speeds[nextIndex]);
+  };
+
   return (
-    <div className="relative w-full h-full max-w-[480px] mx-auto flex items-center justify-center bg-slate-950 overflow-hidden rounded-none shadow-2xl border-x sm:border-white/10 group transition-all duration-300">      {/* Video Element */}
-      <video
-        ref={videoRef}
-        src={short.videoUrl}
-        poster={short.thumbnailUrl}
-        loop
-        playsInline
-        muted={isMuted}
-        onTimeUpdate={handleTimeUpdate}
-        onClick={handleVideoClick}
-        onDoubleClick={handleDoubleClick}
-        className="w-full h-full object-cover cursor-pointer select-none "
-      />
+    <div className="relative w-full h-full max-w-[460px] mx-auto flex items-center justify-center bg-slate-950 overflow-hidden rounded-none sm:rounded-3xl shadow-2xl border-x sm:border border-white/10 group transition-all duration-300">
+      
+      {/* Video Element OR High-Perf Poster Placeholder */}
+      {shouldRenderVideo ? (
+        <video
+          ref={videoRef}
+          src={short.videoUrl}
+          poster={short.thumbnailUrl}
+          loop
+          playsInline
+          muted={isMuted}
+          onTimeUpdate={handleTimeUpdate}
+          onClick={handleVideoClick}
+          onDoubleClick={handleDoubleClick}
+          className="w-full h-full object-cover cursor-pointer select-none"
+        />
+      ) : (
+        <div className="relative w-full h-full bg-slate-900 flex items-center justify-center">
+          {short.thumbnailUrl ? (
+            <img src={short.thumbnailUrl} alt={short.title} className="w-full h-full object-cover opacity-60" />
+          ) : (
+            <div className="w-12 h-12 rounded-full border-2 border-[var(--accent-primary)] border-t-transparent animate-spin" />
+          )}
+        </div>
+      )}
 
       {/* Top & Bottom Ambient Shadow Gradients */}
-      <div className="absolute top-0 inset-x-0 h-24 bg-gradient-to-b from-black/60 to-transparent pointer-events-none z-10" />
-      <div className="absolute bottom-0 inset-x-0 h-56 bg-gradient-to-t from-black/95 via-black/40 to-transparent pointer-events-none z-10" />
+      <div className="absolute top-0 inset-x-0 h-28 bg-gradient-to-b from-black/70 via-black/30 to-transparent pointer-events-none z-10" />
+      <div className="absolute bottom-0 inset-x-0 h-60 bg-gradient-to-t from-black/95 via-black/50 to-transparent pointer-events-none z-10" />
 
       {/* Play / Pause Overlay Icon when paused */}
-      {!isPlaying && (
+      {shouldRenderVideo && !isPlaying && (
         <div
           onClick={handleVideoClick}
           className="absolute inset-0 flex items-center justify-center bg-black/25 pointer-events-auto cursor-pointer z-20"
@@ -131,18 +171,36 @@ export default function ShortCard({ short, isActive }: ShortCardProps) {
 
       {/* Double Tap Heart Animation Overlay */}
       {showHeartAnim && (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-40 animate-ping">
-          <FiHeart className="w-24 h-24 text-[var(--accent-primary)] fill-[var(--accent-primary)] drop-shadow-2xl" />
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-40">
+          <FiHeart className="w-24 h-24 text-[var(--accent-primary)] fill-[var(--accent-primary)] drop-shadow-2xl animate-heart-pop" />
         </div>
       )}
 
-      {/* Mute / Unmute Floating Control */}
-      <button
-        onClick={toggleMute}
-        className="absolute top-4 right-4 z-30 w-10 h-10 rounded-full glass-panel text-white flex items-center justify-center hover:scale-110 active:scale-95 transition-all shadow-lg cursor-pointer"
-      >
-        {isMuted ? <FiVolumeX className="w-5 h-5 text-white/80" /> : <FiVolume2 className="w-5 h-5 text-[var(--accent-primary)]" />}
-      </button>
+      {/* Top Right Floating Controls: Mute & Playback Speed */}
+      <div className="absolute top-4 right-4 z-30 flex items-center gap-2">
+        {/* Speed button */}
+        {playbackRate !== 1 && (
+          <span className="text-[10px] font-extrabold px-2 py-1 rounded-full bg-[var(--accent-primary)] text-white shadow-md animate-pulse">
+            {playbackRate}x
+          </span>
+        )}
+        <button
+          onClick={cyclePlaybackRate}
+          className="w-9 h-9 rounded-full glass-pill text-white/90 flex items-center justify-center hover:scale-110 active:scale-95 transition-all shadow-lg cursor-pointer"
+          title="Playback speed"
+        >
+          <FiFastForward className="w-4 h-4 text-white" />
+        </button>
+
+        {/* Mute button */}
+        <button
+          onClick={toggleMute}
+          className="w-9 h-9 rounded-full glass-pill text-white flex items-center justify-center hover:scale-110 active:scale-95 transition-all shadow-lg cursor-pointer"
+          title={isMuted ? "Unmute" : "Mute"}
+        >
+          {isMuted ? <FiVolumeX className="w-4 h-4 text-white/80" /> : <FiVolume2 className="w-4 h-4 text-[var(--accent-primary)]" />}
+        </button>
+      </div>
 
       {/* Video Information Overlay (Bottom Left) */}
       <div className="absolute left-4 bottom-5 right-20 z-30 text-white pointer-events-auto space-y-2">
@@ -152,7 +210,7 @@ export default function ShortCard({ short, isActive }: ShortCardProps) {
               <span>@{short.owner?.username}</span>
               {short.owner?.isVerified && <VerifiedBadge size="sm" className="drop-shadow-md" />}
             </Link>
-            <span className="text-[11px] font-bold text-slate-300 px-1.5 py-0.5 rounded-md bg-black/40 backdrop-blur-xs border border-white/10">from</span>
+            <span className="text-[10px] font-bold text-slate-300 px-1.5 py-0.5 rounded-md bg-black/40 backdrop-blur-xs border border-white/10">reposted from</span>
             <Link href={`/profile/${short.originalShort.owner?.username}`} className="inline-flex items-center gap-1 group/original font-extrabold text-[var(--accent-cyan)] hover:underline">
               <span>@{short.originalShort.owner?.username}</span>
               {short.originalShort.owner?.isVerified && <VerifiedBadge size="sm" className="drop-shadow-md" />}
@@ -183,7 +241,7 @@ export default function ShortCard({ short, isActive }: ShortCardProps) {
                 <Link
                   key={cleanTag}
                   href={`/explore?tag=${encodeURIComponent(cleanTag)}`}
-                  className="px-2 py-0.5 rounded-md bg-white/10 hover:bg-[var(--accent-primary)]/80 text-[11px] font-extrabold text-[var(--accent-cyan)] hover:text-white border border-white/15 transition-all shadow-xs"
+                  className="px-2 py-0.5 rounded-md bg-white/10 hover:bg-[var(--accent-primary)] text-[11px] font-extrabold text-[var(--accent-cyan)] hover:text-white border border-white/15 transition-all shadow-xs"
                 >
                   #{cleanTag}
                 </Link>
@@ -192,26 +250,35 @@ export default function ShortCard({ short, isActive }: ShortCardProps) {
           </div>
         )}
 
-        {/* Audio Track Info */}
-        <div className="flex items-center gap-2 text-xs text-slate-300 pt-1">
-          <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center">
+        {/* Audio Track Ticker */}
+        <div className="flex items-center gap-2 text-xs text-slate-200 pt-1 overflow-hidden max-w-[220px]">
+          <div className="w-5 h-5 rounded-full bg-white/15 flex items-center justify-center shrink-0">
             <FiMusic className="w-3 h-3 animate-pulse text-[var(--accent-secondary)]" />
           </div>
-          <span className="truncate max-w-[200px] font-medium text-slate-200 drop-shadow-sm">
-            {short.sound ? short.sound.title : `Original Audio - ${short.owner?.username}`}
-          </span>
+          <div className="overflow-hidden whitespace-nowrap">
+            <span className="font-medium text-slate-200 drop-shadow-sm text-xs">
+              {short.sound ? short.sound.title : `Original Audio - ${short.owner?.username}`}
+            </span>
+          </div>
         </div>
       </div>
 
       {/* Right Action Sidebar */}
       <ShortSidebar short={short} isPlaying={isPlaying} />
 
-      {/* Bottom Timeline Progress Bar */}
-      <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/20 z-30">
+      {/* Bottom Timeline Progress Bar with Click Seek */}
+      <div
+        ref={timelineRef}
+        onClick={handleTimelineClick}
+        className="absolute bottom-0 left-0 right-0 h-1.5 bg-white/20 z-30 cursor-pointer group/timeline hover:h-2.5 transition-all"
+        title="Click to seek"
+      >
         <div
-          className="h-full bg-gradient-to-r from-[var(--accent-primary)] via-rose-400 to-[var(--accent-secondary)] transition-all duration-100 ease-linear shadow-xs"
+          className="h-full bg-gradient-to-r from-[var(--accent-primary)] via-rose-400 to-[var(--accent-secondary)] transition-all duration-100 ease-linear shadow-xs relative"
           style={{ width: `${progress}%` }}
-        />
+        >
+          <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white shadow-md opacity-0 group-hover/timeline:opacity-100 transition-opacity" />
+        </div>
       </div>
     </div>
   );

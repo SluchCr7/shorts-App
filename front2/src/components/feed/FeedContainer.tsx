@@ -23,6 +23,7 @@ export default function FeedContainer() {
   // Reset page when feedType changes
   useEffect(() => {
     setPage(1);
+    setActiveIndex(0);
   }, [feedType]);
 
   // Handle scroll intersection to detect active card and trigger pagination
@@ -53,7 +54,7 @@ export default function FeedContainer() {
       }
     };
 
-    container.addEventListener("scroll", handleScroll);
+    container.addEventListener("scroll", handleScroll, { passive: true });
     return () => container.removeEventListener("scroll", handleScroll);
   }, [feed, hasMore, isFetching, isLoading]);
 
@@ -87,11 +88,18 @@ export default function FeedContainer() {
       ref={containerRef}
       className="w-full h-screen overflow-y-scroll snap-y snap-mandatory no-scrollbar"
     >
-      {feed.map((short, index) => (
-        <div key={short._id} className="w-full h-screen snap-start snap-always flex items-center justify-center overflow-hidden py-4">
-          <ShortCard short={short} isActive={index === activeIndex} />
-        </div>
-      ))}
+      {feed.map((short, index) => {
+        const isNearby = Math.abs(index - activeIndex) <= 1;
+        return (
+          <div key={short._id} className="w-full h-screen snap-start snap-always flex items-center justify-center overflow-hidden py-2 sm:py-4">
+            <ShortCard
+              short={short}
+              isActive={index === activeIndex}
+              shouldRenderVideo={isNearby}
+            />
+          </div>
+        );
+      })}
 
       {isFetching && page > 1 && (
         <div className="w-full py-4 flex items-center justify-center">
