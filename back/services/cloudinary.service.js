@@ -2,10 +2,28 @@ const cloudinary = require("../config/cloudinary");
 const ApiError = require("../utils/ApiError");
 const { Readable } = require("stream");
 
-const uploadOnCloudinary = async (fileBuffer, folder = "shorts_platform", resourceType = "auto") => {
+const uploadOnCloudinary = async (fileInput, folder = "shorts_platform", resourceType = "auto") => {
   return new Promise((resolve, reject) => {
-    if (!fileBuffer) {
-      return reject(new ApiError(400, "File buffer is missing"));
+    if (!fileInput) {
+      return reject(new ApiError(400, "File input is missing"));
+    }
+
+    if (typeof fileInput === "string") {
+      cloudinary.uploader.upload(
+        fileInput,
+        {
+          folder,
+          resource_type: resourceType,
+        },
+        (error, result) => {
+          if (error) {
+            console.error("Cloudinary File Upload Error:", error);
+            return reject(new ApiError(500, `Cloudinary Upload Error: ${error.message}`));
+          }
+          resolve(result);
+        }
+      );
+      return;
     }
 
     const uploadStream = cloudinary.uploader.upload_stream(
@@ -15,9 +33,9 @@ const uploadOnCloudinary = async (fileBuffer, folder = "shorts_platform", resour
       },
       (error, result) => {
         if (error) {
-          console.error("Cloudinary Upload Error:", error);
+          console.error("Cloudinary Buffer Upload Error:", error);
           if (resourceType === "image" || folder === "avatars" || folder === "covers") {
-            const base64 = fileBuffer.toString("base64");
+            const base64 = fileInput.toString("base64");
             return resolve({
               secure_url: `data:image/jpeg;base64,${base64}`,
               public_id: `local_${Date.now()}`,
@@ -29,7 +47,7 @@ const uploadOnCloudinary = async (fileBuffer, folder = "shorts_platform", resour
       }
     );
 
-    Readable.from(fileBuffer).pipe(uploadStream);
+    Readable.from(fileInput).pipe(uploadStream);
   });
 };
 

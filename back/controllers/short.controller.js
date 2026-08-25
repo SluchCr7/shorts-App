@@ -44,11 +44,15 @@ const enrichShortsWithInteractions = async (shorts, userId) => {
   }));
 };
 
+const { processVideo, extractThumbnail, cleanupFiles } = require("../services/ffmpeg.service");
+const path = require("path");
+const fs = require("fs");
+
 // @desc    Upload a new video short
 // @route   POST /api/v1/shorts
 // @access  Private
 const uploadShort = asyncHandler(async (req, res) => {
-  const { title, description, soundId, privacy } = req.body;
+  const { title, description, soundId, privacy, startTime, duration } = req.body;
 
   const videoFile = req.files?.video ? req.files.video[0] : null;
   const thumbnailFile = req.files?.thumbnail ? req.files.thumbnail[0] : null;
@@ -57,48 +61,99 @@ const uploadShort = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Video file is required");
   }
 
-  // Upload video to Cloudinary
-  const videoResult = await uploadOnCloudinary(videoFile.buffer, "shorts_videos", "video");
+  const filesToCleanup = [];
+  if (videoFile.path) filesToCleanup.push(videoFile.path);
+  if (thumbnailFile?.path) filesToCleanup.push(thumbnailFile.path);
 
-  let thumbnailUrl = "";
-  let thumbnailPublicId = "";
+  let finalVideoPath = videoFile.path;
+  const tempDir = videoFile.destination || path.dirname(videoFile.path);
+  const processedVideoPath = path.join(tempDir, `trimmed-${Date.now()}-${path.basename(videoFile.path)}`);
 
-  if (thumbnailFile) {
-    const thumbResult = await uploadOnCloudinary(thumbnailFile.buffer, "shorts_thumbnails", "image");
-    thumbnailUrl = thumbResult.secure_url;
-    thumbnailPublicId = thumbResult.public_id;
-  } else {
-    // Generate thumbnail URL automatically from Cloudinary video transformation
-    thumbnailUrl = videoResult.secure_url.replace(/\.[^/.]+$/, ".jpg");
+  try {
+    // Attempt FFmpeg video trimming & scaling
+    try {
+      await processVideo({
+        inputPath: videoFile.path,
+        startTime: startTime !== undefined ? parseFloat(startTime) : 0,
+        duration: duration !== undefined ? parseFloat(duration) : 60,
+        outputPath: processedVideoPath,
+      });
+      finalVideoPath = processedVideoPath;
+      filesToCleanup.push(processedVideoPath);
+    } catch (ffmpegErr) {
+      console.warn("FFmpeg processing warning (falling back to original video):", ffmpegErr.message);
+      finalVideoPath = videoFile.path;
+    }
+
+    // Upload video to Cloudinary
+    const videoResult = await uploadOnCloudinary(
+      finalVideoPath || videoFile.buffer,
+      "shorts_videos",
+      "video"
+    );
+
+    let thumbnailUrl = "";
+    let thumbnailPublicId = "";
+
+    if (thumbnailFile) {
+      const thumbResult = await uploadOnCloudinary(
+        thumbnailFile.path || thumbnailFile.buffer,
+        "shorts_thumbnails",
+        "image"
+      );
+      thumbnailUrl = thumbResult.secure_url;
+      thumbnailPublicId = thumbResult.public_id;
+    } else {
+      // Try to extract thumbnail using FFmpeg if possible
+      const extractedThumbPath = path.join(tempDir, `thumb-${Date.now()}.jpg`);
+      try {
+        await extractThumbnail({
+          inputPath: videoFile.path,
+          timestamp: startTime ? parseFloat(startTime) : 0,
+          outputPath: extractedThumbPath,
+        });
+        filesToCleanup.push(extractedThumbPath);
+        const thumbResult = await uploadOnCloudinary(extractedThumbPath, "shorts_thumbnails", "image");
+        thumbnailUrl = thumbResult.secure_url;
+        thumbnailPublicId = thumbResult.public_id;
+      } catch (thumbErr) {
+        console.warn("FFmpeg thumbnail extraction fallback:", thumbErr.message);
+        thumbnailUrl = videoResult.secure_url ? videoResult.secure_url.replace(/\.[^/.]+$/, ".jpg") : "";
+      }
+    }
+
+    const hashtags = extractHashtags(description);
+    const parsedDuration = duration ? Math.round(parseFloat(duration)) : Math.round(videoResult.duration || 0);
+
+    const short = await Short.create({
+      owner: req.user._id,
+      title,
+      description: description || "",
+      videoUrl: videoResult.secure_url,
+      videoPublicId: videoResult.public_id,
+      thumbnailUrl,
+      thumbnailPublicId,
+      duration: parsedDuration,
+      sound: soundId || null,
+      hashtags,
+      privacy: privacy || "public",
+    });
+
+    // Increment user shorts count
+    await User.findByIdAndUpdate(req.user._id, { $inc: { shortsCount: 1 } });
+
+    const populatedShort = await Short.findById(short._id).populate(
+      "owner",
+      "username fullName avatar isVerified"
+    );
+
+    return res
+      .status(201)
+      .json(new ApiResponse(201, populatedShort, "Video short uploaded successfully"));
+  } finally {
+    // Always clean up temp files on disk
+    await cleanupFiles(filesToCleanup);
   }
-
-  const hashtags = extractHashtags(description);
-
-  const short = await Short.create({
-    owner: req.user._id,
-    title,
-    description: description || "",
-    videoUrl: videoResult.secure_url,
-    videoPublicId: videoResult.public_id,
-    thumbnailUrl,
-    thumbnailPublicId,
-    duration: Math.round(videoResult.duration || 0),
-    sound: soundId || null,
-    hashtags,
-    privacy: privacy || "public",
-  });
-
-  // Increment user shorts count
-  await User.findByIdAndUpdate(req.user._id, { $inc: { shortsCount: 1 } });
-
-  const populatedShort = await Short.findById(short._id).populate(
-    "owner",
-    "username fullName avatar isVerified"
-  );
-
-  return res
-    .status(201)
-    .json(new ApiResponse(201, populatedShort, "Video short uploaded successfully"));
 });
 
 // @desc    Get video shorts feed (for-you or following)

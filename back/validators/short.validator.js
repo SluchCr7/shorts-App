@@ -5,6 +5,8 @@ const createShortSchema = Joi.object({
   description: Joi.string().max(1000).allow("").optional().trim(),
   soundId: Joi.string().hex().length(24).optional().allow(null, ""),
   privacy: Joi.string().valid("public", "private", "unlisted").optional(),
+  startTime: Joi.number().min(0).optional(),
+  duration: Joi.number().min(1).max(60).optional(),
 });
 
 const updateShortSchema = Joi.object({
