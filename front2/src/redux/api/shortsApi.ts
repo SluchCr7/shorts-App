@@ -152,6 +152,19 @@ export const shortsApi = baseApi.injectEndpoints({
         }
       },
     }),
+
+    deleteShort: builder.mutation<{ message: string }, string>({
+      query: (shortId) => ({
+        url: `/shorts/${shortId}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: (result, error, id) => [
+        { type: "Short", id },
+        { type: "Short", id: "LIST" },
+        { type: "Short", id: "SEARCH_LIST" },
+        "User",
+      ],
+    }),
   }),
 });
 
@@ -163,4 +176,5 @@ export const {
   useToggleSaveShortMutation,
   useUploadShortMutation,
   useIncrementViewsMutation,
+  useDeleteShortMutation,
 } = shortsApi;
