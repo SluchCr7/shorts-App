@@ -20,10 +20,16 @@ export interface User {
 export interface Sound {
   _id: string;
   title: string;
+  artist?: string;
   audioUrl: string;
+  audioPublicId?: string;
+  coverImage?: string;
   creator?: User | string;
+  createdBy?: User | string;
   duration: number;
+  usesCount?: number;
   shortsCount: number;
+  createdAt?: string;
 }
 
 export interface Short {
@@ -42,6 +48,8 @@ export interface Short {
   sharesCount: number;
   originalShort?: Short | null;
   sound?: Sound | null;
+  audioId?: Sound | string | null;
+  isOriginalAudio?: boolean;
   hashtags: string[];
   privacy: "public" | "private" | "unlisted";
   isLiked?: boolean;

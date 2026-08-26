@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useAppDispatch, useAppSelector } from "../../redux/store";
 import { closeUploadModal } from "../../redux/slices/uiSlice";
 import { useUploadShortMutation } from "../../redux/api/shortsApi";
+import { useGetAudiosQuery } from "../../redux/api/soundsApi";
 import { MAIN_STATIC_HASHTAGS } from "../../constants/hashtags";
+import { Sound } from "../../types";
 import VideoTrimmer from "./VideoTrimmer";
 import CoverPicker from "./CoverPicker";
 import {
@@ -17,11 +19,17 @@ import {
   FiCheck,
   FiScissors,
   FiImage,
+  FiMusic,
+  FiSearch,
+  FiPlay,
+  FiPause,
+  FiDisc,
 } from "react-icons/fi";
 
 export default function UploadModal() {
   const dispatch = useAppDispatch();
   const isUploadOpen = useAppSelector((state) => state.ui.isUploadOpen);
+  const preselectedSound = useAppSelector((state) => state.ui.preselectedSound);
   const [uploadShort, { isLoading: uploading }] = useUploadShortMutation();
 
   // Wizard Step State (1: Select File, 2: Trim & Cover, 3: Details & Publish)
@@ -38,6 +46,53 @@ export default function UploadModal() {
 
   // Thumbnail / Cover State
   const [coverFile, setCoverFile] = useState<File | null>(null);
+
+  // Sound Selector State
+  const [selectedSound, setSelectedSound] = useState<Sound | null>(preselectedSound || null);
+  const [soundSearch, setSoundSearch] = useState("");
+  const [isSoundSelectorOpen, setIsSoundSelectorOpen] = useState(false);
+  const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
+  const audioPreviewRef = useRef<HTMLAudioElement | null>(null);
+
+  const { data: audiosData, isLoading: isAudiosLoading } = useGetAudiosQuery(
+    { search: soundSearch, limit: 10 },
+    { skip: !isSoundSelectorOpen }
+  );
+
+  // Update selectedSound if preselectedSound changes
+  useEffect(() => {
+    if (preselectedSound) {
+      setSelectedSound(preselectedSound);
+    }
+  }, [preselectedSound]);
+
+  // Cleanup audio preview on unmount
+  useEffect(() => {
+    return () => {
+      if (audioPreviewRef.current) {
+        audioPreviewRef.current.pause();
+        audioPreviewRef.current = null;
+      }
+    };
+  }, []);
+
+  const handleToggleAudioPreview = (sound: Sound) => {
+    if (playingAudioId === sound._id) {
+      if (audioPreviewRef.current) {
+        audioPreviewRef.current.pause();
+      }
+      setPlayingAudioId(null);
+    } else {
+      if (audioPreviewRef.current) {
+        audioPreviewRef.current.pause();
+      }
+      const audio = new Audio(sound.audioUrl);
+      audioPreviewRef.current = audio;
+      audio.play().catch(() => {});
+      audio.onended = () => setPlayingAudioId(null);
+      setPlayingAudioId(sound._id);
+    }
+  };
 
   // Metadata State
   const [title, setTitle] = useState("");
@@ -112,6 +167,11 @@ export default function UploadModal() {
 
     setErrorMsg("");
 
+    if (audioPreviewRef.current) {
+      audioPreviewRef.current.pause();
+      setPlayingAudioId(null);
+    }
+
     const calculatedDuration = Math.max(1, endTime - startTime);
 
     const formData = new FormData();
@@ -124,6 +184,10 @@ export default function UploadModal() {
     formData.append("privacy", privacy);
     formData.append("startTime", startTime.toString());
     formData.append("duration", calculatedDuration.toString());
+    if (selectedSound) {
+      formData.append("audioId", selectedSound._id);
+      formData.append("soundId", selectedSound._id);
+    }
 
     try {
       await uploadShort(formData).unwrap();
@@ -134,12 +198,19 @@ export default function UploadModal() {
   };
 
   const handleClose = () => {
+    if (audioPreviewRef.current) {
+      audioPreviewRef.current.pause();
+      audioPreviewRef.current = null;
+    }
+    setPlayingAudioId(null);
     setVideoFile(null);
     setVideoPreview(null);
     setVideoDuration(0);
     setStartTime(0);
     setEndTime(60);
     setCoverFile(null);
+    setSelectedSound(null);
+    setIsSoundSelectorOpen(false);
     setTitle("");
     setDescription("");
     setErrorMsg("");
@@ -293,6 +364,145 @@ export default function UploadModal() {
                   required
                   className="w-full h-11 px-4 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-color)] text-sm text-[var(--text-primary)] font-medium focus:outline-none focus:border-[var(--accent-primary)] focus:ring-2 focus:ring-[var(--accent-primary)]/20 transition-all"
                 />
+              </div>
+
+              {/* Sound / Music Selector Section */}
+              <div className="space-y-2">
+                <label className="block text-[11px] font-extrabold uppercase tracking-wider text-[var(--text-secondary)] flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <FiMusic className="w-3.5 h-3.5 text-[var(--accent-primary)]" />
+                    Background Sound / Music
+                  </span>
+                  <span className="text-[10px] text-[var(--text-muted)] font-normal">Optional</span>
+                </label>
+
+                {selectedSound ? (
+                  <div className="p-3 rounded-2xl bg-[var(--accent-primary)]/10 border border-[var(--accent-primary)]/30 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-xl bg-[var(--accent-primary)] flex items-center justify-center text-white shrink-0 overflow-hidden relative group">
+                        {selectedSound.coverImage ? (
+                          <img src={selectedSound.coverImage} alt={selectedSound.title} className="w-full h-full object-cover" />
+                        ) : (
+                          <FiDisc className="w-5 h-5 animate-spin-slow" />
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => handleToggleAudioPreview(selectedSound)}
+                          className="absolute inset-0 bg-black/40 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          {playingAudioId === selectedSound._id ? <FiPause className="w-4 h-4" /> : <FiPlay className="w-4 h-4 fill-current translate-x-0.5" />}
+                        </button>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-[var(--text-primary)] truncate">{selectedSound.title}</p>
+                        <p className="text-[10px] font-semibold text-[var(--text-secondary)] truncate">{selectedSound.artist || "Original Sound"}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => handleToggleAudioPreview(selectedSound)}
+                        className="p-2 rounded-xl bg-[var(--bg-surface)] hover:bg-[var(--bg-elevated)] text-[var(--text-primary)] transition-colors"
+                        title="Preview Audio"
+                      >
+                        {playingAudioId === selectedSound._id ? <FiPause className="w-3.5 h-3.5 text-[var(--accent-primary)]" /> : <FiPlay className="w-3.5 h-3.5 fill-current" />}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedSound(null);
+                          if (playingAudioId === selectedSound._id && audioPreviewRef.current) {
+                            audioPreviewRef.current.pause();
+                            setPlayingAudioId(null);
+                          }
+                        }}
+                        className="px-2.5 py-1.5 rounded-xl border border-rose-500/30 text-rose-500 text-xs font-bold hover:bg-rose-500/10 transition-colors"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setIsSoundSelectorOpen(!isSoundSelectorOpen)}
+                    className="w-full h-11 px-4 rounded-xl bg-[var(--bg-elevated)] border border-dashed border-[var(--border-color)] hover:border-[var(--accent-primary)] text-xs font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] flex items-center justify-between transition-all"
+                  >
+                    <span className="flex items-center gap-2">
+                      <FiMusic className="w-4 h-4 text-[var(--accent-primary)]" />
+                      Add Music Track / Trending Sound
+                    </span>
+                    <span className="text-[11px] font-extrabold text-[var(--accent-primary)]">
+                      {isSoundSelectorOpen ? "Close Library" : "Browse Sounds →"}
+                    </span>
+                  </button>
+                )}
+
+                {/* Sound Library Search Drawer */}
+                {isSoundSelectorOpen && !selectedSound && (
+                  <div className="mt-2.5 p-3 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-color)] space-y-3 animate-in fade-in duration-150">
+                    <div className="relative">
+                      <input
+                        type="text"
+                        placeholder="Search music by title or artist..."
+                        value={soundSearch}
+                        onChange={(e) => setSoundSearch(e.target.value)}
+                        className="w-full h-9 pl-9 pr-4 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-color)] text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-primary)] transition-all"
+                      />
+                      <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--text-muted)]" />
+                    </div>
+
+                    <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1">
+                      {isAudiosLoading ? (
+                        <div className="py-6 text-center text-xs font-semibold text-[var(--text-muted)] flex items-center justify-center gap-2">
+                          <div className="w-4 h-4 rounded-full border-2 border-[var(--accent-primary)] border-t-transparent animate-spin" />
+                          Fetching sound library...
+                        </div>
+                      ) : audiosData?.audios && audiosData.audios.length > 0 ? (
+                        audiosData.audios.map((audioTrack) => (
+                          <div
+                            key={audioTrack._id}
+                            className="p-2 rounded-xl bg-[var(--bg-elevated)]/50 hover:bg-[var(--bg-elevated)] flex items-center justify-between gap-3 transition-colors group"
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <button
+                                type="button"
+                                onClick={() => handleToggleAudioPreview(audioTrack)}
+                                className="w-8 h-8 rounded-lg bg-[var(--accent-primary)]/10 text-[var(--accent-primary)] flex items-center justify-center shrink-0 hover:scale-105 transition-transform"
+                              >
+                                {playingAudioId === audioTrack._id ? <FiPause className="w-3.5 h-3.5" /> : <FiPlay className="w-3.5 h-3.5 fill-current translate-x-0.5" />}
+                              </button>
+                              <div className="min-w-0">
+                                <p className="text-xs font-bold text-[var(--text-primary)] truncate">{audioTrack.title}</p>
+                                <p className="text-[10px] text-[var(--text-muted)] truncate">{audioTrack.artist || "Original Sound"}</p>
+                              </div>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedSound(audioTrack);
+                                setIsSoundSelectorOpen(false);
+                                if (audioPreviewRef.current) {
+                                  audioPreviewRef.current.pause();
+                                  setPlayingAudioId(null);
+                                }
+                              }}
+                              className="px-3 py-1.5 rounded-lg bg-[var(--accent-primary)] text-white text-[11px] font-bold hover:scale-105 transition-transform shrink-0"
+                            >
+                              Select
+                            </button>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="py-6 text-center text-xs font-semibold text-[var(--text-muted)]">
+                          No audio tracks found matching "{soundSearch}"
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Description & Hashtags */}

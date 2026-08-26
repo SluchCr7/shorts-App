@@ -21,6 +21,7 @@ const generateAccessAndRefreshTokens = async (userId) => {
     const accessToken = user.generateAccessToken();
     const refreshToken = user.generateRefreshToken();
 
+    user.previousRefreshToken = user.refreshToken || "";
     user.refreshToken = refreshToken;
     await user.save({ validateBeforeSave: false });
 
@@ -37,15 +38,15 @@ const generateAccessAndRefreshTokens = async (userId) => {
 const setAuthCookies = (res, accessToken, refreshToken) => {
   const options = getCookieOptions();
 
-  // Access Token Cookie (1 day in production to avoid premature logout on tab close)
-  const accessMaxAge = 24 * 60 * 60 * 1000;
+  // Access Token Cookie (7 days)
+  const accessMaxAge = 7 * 24 * 60 * 60 * 1000;
   res.cookie("accessToken", accessToken, {
     ...options,
     maxAge: accessMaxAge,
   });
 
-  // Refresh Token Cookie (7 days by default)
-  const refreshMaxAge = 7 * 24 * 60 * 60 * 1000;
+  // Refresh Token Cookie (30 days)
+  const refreshMaxAge = 30 * 24 * 60 * 60 * 1000;
   res.cookie("refreshToken", refreshToken, {
     ...options,
     maxAge: refreshMaxAge,

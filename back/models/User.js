@@ -66,6 +66,10 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    previousRefreshToken: {
+      type: String,
+      default: "",
+    },
     followersCount: {
       type: Number,
       default: 0,
@@ -99,7 +103,7 @@ userSchema.methods.isPasswordCorrect = async function (password) {
   return await bcrypt.compare(password, this.password);
 };
 
-// Generate Access Token (Short lived, e.g. 15m)
+// Generate Access Token (1 day by default)
 userSchema.methods.generateAccessToken = function () {
   return jwt.sign(
     {
@@ -110,12 +114,12 @@ userSchema.methods.generateAccessToken = function () {
     },
     process.env.ACCESS_TOKEN_SECRET,
     {
-      expiresIn: process.env.ACCESS_TOKEN_EXPIRES_IN || "15m",
+      expiresIn: process.env.ACCESS_TOKEN_EXPIRES_IN || "1d",
     }
   );
 };
 
-// Generate Refresh Token (Long lived, e.g. 7d)
+// Generate Refresh Token (30 days by default)
 userSchema.methods.generateRefreshToken = function () {
   return jwt.sign(
     {
@@ -123,7 +127,7 @@ userSchema.methods.generateRefreshToken = function () {
     },
     process.env.REFRESH_TOKEN_SECRET,
     {
-      expiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN || "7d",
+      expiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN || "30d",
     }
   );
 };

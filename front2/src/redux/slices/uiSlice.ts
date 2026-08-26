@@ -1,9 +1,12 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 
+import { Sound } from "../../types";
+
 interface UiState {
   feedType: "for-you" | "following";
   activeShortId: string | null;
   isUploadOpen: boolean;
+  preselectedSound: Sound | null;
   isCommentsOpen: boolean;
   commentsShortId: string | null;
   isAuthModalOpen: boolean;
@@ -15,6 +18,7 @@ const initialState: UiState = {
   feedType: "for-you",
   activeShortId: null,
   isUploadOpen: false,
+  preselectedSound: null,
   isCommentsOpen: false,
   commentsShortId: null,
   isAuthModalOpen: false,
@@ -35,8 +39,13 @@ export const uiSlice = createSlice({
     openUploadModal: (state) => {
       state.isUploadOpen = true;
     },
+    openUploadModalWithSound: (state, action: PayloadAction<Sound>) => {
+      state.isUploadOpen = true;
+      state.preselectedSound = action.payload;
+    },
     closeUploadModal: (state) => {
       state.isUploadOpen = false;
+      state.preselectedSound = null;
     },
     openCommentsDrawer: (state, action: PayloadAction<string>) => {
       state.isCommentsOpen = true;
@@ -70,6 +79,7 @@ export const {
   setFeedType,
   setActiveShortId,
   openUploadModal,
+  openUploadModalWithSound,
   closeUploadModal,
   openCommentsDrawer,
   closeCommentsDrawer,

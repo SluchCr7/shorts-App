@@ -44,7 +44,8 @@ const enrichShortsWithInteractions = async (shorts, userId) => {
   }));
 };
 
-const { processVideo, extractThumbnail, cleanupFiles } = require("../services/ffmpeg.service");
+const Sound = require("../models/Sound");
+const { processVideo, extractThumbnail, mixVideoAudio, cleanupFiles } = require("../services/ffmpeg.service");
 const path = require("path");
 const fs = require("fs");
 const os = require("os");
@@ -53,7 +54,8 @@ const os = require("os");
 // @route   POST /api/v1/shorts
 // @access  Private
 const uploadShort = asyncHandler(async (req, res) => {
-  const { title, description, soundId, privacy, startTime, duration } = req.body;
+  const { title, description, soundId, audioId, privacy, startTime, duration } = req.body;
+  const targetAudioId = audioId || soundId;
 
   const videoFile = req.files?.video ? req.files.video[0] : null;
   const thumbnailFile = req.files?.thumbnail ? req.files.thumbnail[0] : null;
@@ -71,7 +73,7 @@ const uploadShort = asyncHandler(async (req, res) => {
   const processedVideoPath = path.join(tempDir, `trimmed-${Date.now()}-${path.basename(videoFile.path || "video.mp4")}`);
 
   try {
-    // Attempt FFmpeg video trimming & scaling
+    // 1. Attempt FFmpeg video trimming & scaling
     try {
       await processVideo({
         inputPath: videoFile.path,
@@ -82,11 +84,34 @@ const uploadShort = asyncHandler(async (req, res) => {
       finalVideoPath = processedVideoPath;
       filesToCleanup.push(processedVideoPath);
     } catch (ffmpegErr) {
-      console.warn("FFmpeg processing warning (falling back to original video):", ffmpegErr.message);
+      console.warn("FFmpeg video processing warning (falling back to original video):", ffmpegErr.message);
       finalVideoPath = videoFile.path;
     }
 
-    // Upload video to Cloudinary
+    // 2. Attempt FFmpeg Audio Mixing if soundId / audioId provided
+    let chosenSound = null;
+    let isOriginalAudio = true;
+
+    if (targetAudioId) {
+      chosenSound = await Sound.findById(targetAudioId);
+      if (chosenSound && chosenSound.audioUrl) {
+        isOriginalAudio = false;
+        const mixedVideoPath = path.join(tempDir, `mixed-${Date.now()}-${path.basename(videoFile.path || "video.mp4")}`);
+        try {
+          await mixVideoAudio({
+            videoPath: finalVideoPath,
+            audioPath: chosenSound.audioUrl,
+            outputPath: mixedVideoPath,
+          });
+          finalVideoPath = mixedVideoPath;
+          filesToCleanup.push(mixedVideoPath);
+        } catch (mixErr) {
+          console.warn("FFmpeg audio mixing warning (using default video audio):", mixErr.message);
+        }
+      }
+    }
+
+    // 3. Upload video to Cloudinary
     const videoResult = await uploadOnCloudinary(
       finalVideoPath || videoFile.buffer,
       "shorts_videos",
@@ -105,7 +130,7 @@ const uploadShort = asyncHandler(async (req, res) => {
       thumbnailUrl = thumbResult.secure_url;
       thumbnailPublicId = thumbResult.public_id;
     } else {
-      // Try to extract thumbnail using FFmpeg if possible
+      // Extract thumbnail using FFmpeg
       const extractedThumbPath = path.join(tempDir, `thumb-${Date.now()}.jpg`);
       try {
         await extractThumbnail({
@@ -126,6 +151,31 @@ const uploadShort = asyncHandler(async (req, res) => {
     const hashtags = extractHashtags(description);
     const parsedDuration = duration ? Math.round(parseFloat(duration)) : Math.round(videoResult.duration || 0);
 
+    // 4. Handle Sound record (increment usesCount or create original sound)
+    if (chosenSound) {
+      await Sound.findByIdAndUpdate(chosenSound._id, {
+        $inc: { usesCount: 1, shortsCount: 1 },
+      });
+    } else {
+      // Auto-create original sound for this short
+      try {
+        chosenSound = await Sound.create({
+          title: `${req.user.username} · Original Audio`,
+          artist: req.user.fullName || req.user.username,
+          audioUrl: videoResult.secure_url,
+          audioPublicId: videoResult.public_id,
+          creator: req.user._id,
+          createdBy: req.user._id,
+          duration: parsedDuration,
+          usesCount: 1,
+          shortsCount: 1,
+        });
+        isOriginalAudio = true;
+      } catch (err) {
+        console.warn("Could not auto-create original sound record:", err.message);
+      }
+    }
+
     const short = await Short.create({
       owner: req.user._id,
       title,
@@ -135,7 +185,9 @@ const uploadShort = asyncHandler(async (req, res) => {
       thumbnailUrl,
       thumbnailPublicId,
       duration: parsedDuration,
-      sound: soundId || null,
+      sound: chosenSound?._id || null,
+      audioId: chosenSound?._id || null,
+      isOriginalAudio,
       hashtags,
       privacy: privacy || "public",
     });
@@ -143,10 +195,9 @@ const uploadShort = asyncHandler(async (req, res) => {
     // Increment user shorts count
     await User.findByIdAndUpdate(req.user._id, { $inc: { shortsCount: 1 } });
 
-    const populatedShort = await Short.findById(short._id).populate(
-      "owner",
-      "username fullName avatar isVerified"
-    );
+    const populatedShort = await Short.findById(short._id)
+      .populate("owner", "username fullName avatar isVerified")
+      .populate("sound audioId");
 
     return res
       .status(201)

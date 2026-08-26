@@ -10,6 +10,9 @@ const errorHandler = require("./middlewares/error.middleware");
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Trust reverse proxy header in deployment (Vercel, Render, Railway, etc.)
+app.set("trust proxy", 1);
+
 // Security Middlewares
 app.use(helmet());
 

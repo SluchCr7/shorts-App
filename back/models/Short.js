@@ -72,6 +72,15 @@ const shortSchema = new mongoose.Schema(
       ref: "Sound",
       default: null,
     },
+    audioId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Sound",
+      default: null,
+    },
+    isOriginalAudio: {
+      type: Boolean,
+      default: false,
+    },
     hashtags: [
       {
         type: String,

@@ -251,16 +251,29 @@ export default function ShortCard({ short, isActive, shouldRenderVideo = true }:
         )}
 
         {/* Audio Track Ticker */}
-        <div className="flex items-center gap-2 text-xs text-slate-200 pt-1 overflow-hidden max-w-[220px]">
-          <div className="w-5 h-5 rounded-full bg-white/15 flex items-center justify-center shrink-0">
-            <FiMusic className="w-3 h-3 animate-pulse text-[var(--accent-secondary)]" />
-          </div>
-          <div className="overflow-hidden whitespace-nowrap">
-            <span className="font-medium text-slate-200 drop-shadow-sm text-xs">
-              {short.sound ? short.sound.title : `Original Audio - ${short.owner?.username}`}
-            </span>
-          </div>
-        </div>
+        {(() => {
+          const soundObj = typeof short.audioId === "object" && short.audioId ? short.audioId : short.sound;
+          const soundId = soundObj?._id || (typeof short.audioId === "string" ? short.audioId : null);
+          const soundTitle = soundObj?.title || `Original Audio - ${short.owner?.username}`;
+          const soundArtist = soundObj?.artist ? ` · ${soundObj.artist}` : "";
+          const targetHref = soundId ? `/audio/${soundId}` : `/profile/${short.owner?.username}`;
+
+          return (
+            <Link
+              href={targetHref}
+              className="inline-flex items-center gap-2 text-xs text-slate-200 pt-1 overflow-hidden max-w-[240px] hover:text-[var(--accent-primary)] transition-colors group/sound cursor-pointer"
+            >
+              <div className="w-5 h-5 rounded-full bg-white/15 flex items-center justify-center shrink-0 group-hover/sound:scale-110 transition-transform">
+                <FiMusic className="w-3 h-3 animate-pulse text-[var(--accent-secondary)]" />
+              </div>
+              <div className="overflow-hidden whitespace-nowrap">
+                <span className="font-semibold text-slate-200 group-hover/sound:text-white drop-shadow-sm text-xs truncate">
+                  {soundTitle}{soundArtist}
+                </span>
+              </div>
+            </Link>
+          );
+        })()}
       </div>
 
       {/* Right Action Sidebar */}

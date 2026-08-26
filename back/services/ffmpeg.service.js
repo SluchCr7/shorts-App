@@ -103,6 +103,58 @@ const extractThumbnail = ({ inputPath, timestamp = 0, outputPath }) => {
 };
 
 /**
+ * Mixes or replaces video audio with a selected audio track.
+ * @param {Object} params
+ * @param {string} params.videoPath - Local path to input video file
+ * @param {string} params.audioPath - Local path or URL to input audio file
+ * @param {string} params.outputPath - Local path for output mixed video file
+ * @returns {Promise<string>}
+ */
+const mixVideoAudio = ({ videoPath, audioPath, outputPath }) => {
+  return new Promise((resolve, reject) => {
+    if (!videoPath || !fs.existsSync(videoPath)) {
+      return reject(new ApiError(400, "Valid input video file is required for audio mixing"));
+    }
+    if (!audioPath) {
+      return reject(new ApiError(400, "Valid input audio file or URL is required"));
+    }
+
+    const command = ffmpeg().input(videoPath).input(audioPath);
+
+    if (fs.existsSync(audioPath)) {
+      command.inputOptions(["-stream_loop -1"]);
+    }
+
+    command
+      .outputOptions([
+        "-map 0:v:0",
+        "-map 1:a:0",
+        "-c:v libx264",
+        "-crf 23",
+        "-preset fast",
+        "-c:a aac",
+        "-b:a 128k",
+        "-shortest",
+        "-movflags +faststart",
+      ])
+      .output(outputPath)
+      .on("start", (cmd) => {
+        console.log("FFmpeg audio mixing process started:", cmd);
+      })
+      .on("end", () => {
+        console.log("FFmpeg audio mixing completed successfully:", outputPath);
+        resolve(outputPath);
+      })
+      .on("error", (err) => {
+        console.error("FFmpeg audio mixing error:", err);
+        reject(new ApiError(500, `Audio mixing failed: ${err.message}`));
+      });
+
+    command.run();
+  });
+};
+
+/**
  * Safely removes list of files from disk.
  * @param {Array<string>} filePaths
  */
@@ -122,5 +174,6 @@ const cleanupFiles = async (filePaths = []) => {
 module.exports = {
   processVideo,
   extractThumbnail,
+  mixVideoAudio,
   cleanupFiles,
 };

@@ -157,9 +157,17 @@ export default function ShortSidebar({ short, isPlaying }: ShortSidebarProps) {
         </button>
 
         {/* Audio Spinning Disc */}
-        <div className="mt-1">
-          <SoundDisc sound={short.sound} isPlaying={isPlaying} />
-        </div>
+        {(() => {
+          const soundObj = typeof short.audioId === "object" && short.audioId ? short.audioId : short.sound;
+          const soundId = soundObj?._id || (typeof short.audioId === "string" ? short.audioId : null);
+          const targetHref = soundId ? `/audio/${soundId}` : `/profile/${short.owner?.username}`;
+
+          return (
+            <Link href={targetHref} className="mt-1 cursor-pointer block hover:scale-105 transition-transform" title="View sound details">
+              <SoundDisc sound={soundObj || short.sound} isPlaying={isPlaying} />
+            </Link>
+          );
+        })()}
       </div>
 
       {/* Professional Share Modal */}

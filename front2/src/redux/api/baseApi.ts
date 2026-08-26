@@ -29,6 +29,8 @@ const rawBaseQuery = fetchBaseQuery({
   },
 });
 
+let refreshPromise: Promise<boolean> | null = null;
+
 const baseQueryWithReauth: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQueryError> = async (
   args,
   api,
@@ -47,39 +49,61 @@ const baseQueryWithReauth: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQue
       return result;
     }
 
-    const refreshToken = typeof window !== "undefined" ? localStorage.getItem("refreshToken") : null;
+    if (!refreshPromise) {
+      refreshPromise = (async () => {
+        const refreshToken =
+          typeof window !== "undefined" ? localStorage.getItem("refreshToken") : null;
 
-    if (refreshToken) {
-      const refreshResult: any = await rawBaseQuery(
-        {
-          url: "/auth/refresh",
-          method: "POST",
-          body: { refreshToken },
-        },
-        api,
-        extraOptions
-      );
+        if (!refreshToken) {
+          return false;
+        }
 
-      if (refreshResult.data?.data?.accessToken) {
-        const newAccessToken = refreshResult.data.data.accessToken;
-        const newRefreshToken = refreshResult.data.data.refreshToken;
+        try {
+          const refreshResult: any = await rawBaseQuery(
+            {
+              url: "/auth/refresh",
+              method: "POST",
+              body: { refreshToken },
+            },
+            api,
+            extraOptions
+          );
 
-        if (typeof window !== "undefined") {
-          localStorage.setItem("accessToken", newAccessToken);
-          if (newRefreshToken) {
-            localStorage.setItem("refreshToken", newRefreshToken);
+          if (refreshResult.data?.data?.accessToken) {
+            const newAccessToken = refreshResult.data.data.accessToken;
+            const newRefreshToken = refreshResult.data.data.refreshToken;
+
+            if (typeof window !== "undefined") {
+              localStorage.setItem("accessToken", newAccessToken);
+              if (newRefreshToken) {
+                localStorage.setItem("refreshToken", newRefreshToken);
+              }
+            }
+            return true;
+          } else {
+            if (typeof window !== "undefined") {
+              localStorage.removeItem("accessToken");
+              localStorage.removeItem("refreshToken");
+            }
+            return false;
           }
+        } catch {
+          if (typeof window !== "undefined") {
+            localStorage.removeItem("accessToken");
+            localStorage.removeItem("refreshToken");
+          }
+          return false;
+        } finally {
+          refreshPromise = null;
         }
+      })();
+    }
 
-        // Retry original request with new access token
-        result = await rawBaseQuery(args, api, extraOptions);
-      } else {
-        // Refresh token failed or expired, clean up stored tokens
-        if (typeof window !== "undefined") {
-          localStorage.removeItem("accessToken");
-          localStorage.removeItem("refreshToken");
-        }
-      }
+    const refreshSuccess = await refreshPromise;
+
+    if (refreshSuccess) {
+      // Retry original request with newly saved access token
+      result = await rawBaseQuery(args, api, extraOptions);
     }
   }
 
