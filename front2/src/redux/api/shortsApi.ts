@@ -53,70 +53,152 @@ export const shortsApi = baseApi.injectEndpoints({
       providesTags: [{ type: "Short", id: "SEARCH_LIST" }],
     }),
 
-    toggleLikeShort: builder.mutation<{ shortId: string; isLiked: boolean }, { short: Short; feedType?: "for-you" | "following" }>({
-      query: ({ short }) => ({
+    toggleLikeShort: builder.mutation<
+      { isLiked: boolean; likesCount: number },
+      { short: Short; targetState?: boolean; feedType?: "for-you" | "following" }
+    >({
+      query: ({ short, targetState }) => ({
         url: `/shorts/${short._id}/like`,
-        method: short.isLiked ? "DELETE" : "POST",
+        method: "POST",
+        body: typeof targetState === "boolean" ? { targetState } : {},
       }),
-      async onQueryStarted({ short, feedType = "for-you" }, { dispatch, queryFulfilled }) {
-        const patchFeed = dispatch(
-          shortsApi.util.updateQueryData("getShortsFeed", { type: feedType, page: 1 }, (draft) => {
-            const target = draft.shorts.find((s) => s._id === short._id);
-            if (target) {
-              target.isLiked = !target.isLiked;
-              target.likesCount += target.isLiked ? 1 : -1;
-            }
-          })
+      transformResponse: (res: { data: { isLiked: boolean; likesCount: number } }) => res.data,
+      async onQueryStarted({ short, targetState, feedType = "for-you" }, { dispatch, queryFulfilled }) {
+        const nextIsLiked = typeof targetState === "boolean" ? targetState : !short.isLiked;
+        const diff = nextIsLiked ? 1 : -1;
+
+        const updateShortItem = (item: Short) => {
+          if (item._id === short._id) {
+            item.isLiked = nextIsLiked;
+            item.likesCount = Math.max(0, item.likesCount + diff);
+          }
+        };
+
+        const feedTypes: Array<"for-you" | "following"> = ["for-you", "following"];
+        const feedPatches = feedTypes.map((type) =>
+          dispatch(
+            shortsApi.util.updateQueryData("getShortsFeed", { type, page: 1 }, (draft) => {
+              if (draft?.shorts) {
+                draft.shorts.forEach(updateShortItem);
+              }
+            })
+          )
         );
 
-        const patchSingle = dispatch(
+        const singlePatch = dispatch(
           shortsApi.util.updateQueryData("getShortById", short._id, (draft) => {
             if (draft) {
-              draft.isLiked = !draft.isLiked;
-              draft.likesCount += draft.isLiked ? 1 : -1;
+              updateShortItem(draft);
             }
           })
         );
 
         try {
-          await queryFulfilled;
+          const { data } = await queryFulfilled;
+          if (data) {
+            const reconcileItem = (item: Short) => {
+              if (item._id === short._id) {
+                item.isLiked = data.isLiked;
+                item.likesCount = data.likesCount;
+              }
+            };
+
+            feedTypes.forEach((type) => {
+              dispatch(
+                shortsApi.util.updateQueryData("getShortsFeed", { type, page: 1 }, (draft) => {
+                  if (draft?.shorts) {
+                    draft.shorts.forEach(reconcileItem);
+                  }
+                })
+              );
+            });
+
+            dispatch(
+              shortsApi.util.updateQueryData("getShortById", short._id, (draft) => {
+                if (draft) {
+                  reconcileItem(draft);
+                }
+              })
+            );
+          }
         } catch {
-          patchFeed.undo();
-          patchSingle.undo();
+          feedPatches.forEach((p) => p.undo());
+          singlePatch.undo();
         }
       },
     }),
 
-    toggleSaveShort: builder.mutation<{ shortId: string; isSaved: boolean }, { short: Short; feedType?: "for-you" | "following" }>({
-      query: ({ short }) => ({
+    toggleSaveShort: builder.mutation<
+      { isSaved: boolean; savesCount: number },
+      { short: Short; targetState?: boolean; feedType?: "for-you" | "following" }
+    >({
+      query: ({ short, targetState }) => ({
         url: `/shorts/${short._id}/save`,
-        method: short.isSaved ? "DELETE" : "POST",
+        method: "POST",
+        body: typeof targetState === "boolean" ? { targetState } : {},
       }),
-      async onQueryStarted({ short, feedType = "for-you" }, { dispatch, queryFulfilled }) {
-        const patchFeed = dispatch(
-          shortsApi.util.updateQueryData("getShortsFeed", { type: feedType, page: 1 }, (draft) => {
-            const target = draft.shorts.find((s) => s._id === short._id);
-            if (target) {
-              target.isSaved = !target.isSaved;
-              target.savesCount += target.isSaved ? 1 : -1;
-            }
-          })
+      transformResponse: (res: { data: { isSaved: boolean; savesCount: number } }) => res.data,
+      async onQueryStarted({ short, targetState, feedType = "for-you" }, { dispatch, queryFulfilled }) {
+        const nextIsSaved = typeof targetState === "boolean" ? targetState : !short.isSaved;
+        const diff = nextIsSaved ? 1 : -1;
+
+        const updateShortItem = (item: Short) => {
+          if (item._id === short._id) {
+            item.isSaved = nextIsSaved;
+            item.savesCount = Math.max(0, item.savesCount + diff);
+          }
+        };
+
+        const feedTypes: Array<"for-you" | "following"> = ["for-you", "following"];
+        const feedPatches = feedTypes.map((type) =>
+          dispatch(
+            shortsApi.util.updateQueryData("getShortsFeed", { type, page: 1 }, (draft) => {
+              if (draft?.shorts) {
+                draft.shorts.forEach(updateShortItem);
+              }
+            })
+          )
         );
 
-        const patchSingle = dispatch(
+        const singlePatch = dispatch(
           shortsApi.util.updateQueryData("getShortById", short._id, (draft) => {
             if (draft) {
-              draft.isSaved = !draft.isSaved;
-              draft.savesCount += draft.isSaved ? 1 : -1;
+              updateShortItem(draft);
             }
           })
         );
 
         try {
-          await queryFulfilled;
+          const { data } = await queryFulfilled;
+          if (data) {
+            const reconcileItem = (item: Short) => {
+              if (item._id === short._id) {
+                item.isSaved = data.isSaved;
+                item.savesCount = data.savesCount;
+              }
+            };
+
+            feedTypes.forEach((type) => {
+              dispatch(
+                shortsApi.util.updateQueryData("getShortsFeed", { type, page: 1 }, (draft) => {
+                  if (draft?.shorts) {
+                    draft.shorts.forEach(reconcileItem);
+                  }
+                })
+              );
+            });
+
+            dispatch(
+              shortsApi.util.updateQueryData("getShortById", short._id, (draft) => {
+                if (draft) {
+                  reconcileItem(draft);
+                }
+              })
+            );
+          }
         } catch {
-          patchFeed.undo();
-          patchSingle.undo();
+          feedPatches.forEach((p) => p.undo());
+          singlePatch.undo();
         }
       },
     }),

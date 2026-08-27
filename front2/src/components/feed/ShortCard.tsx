@@ -106,9 +106,7 @@ export default function ShortCard({ short, isActive, shouldRenderVideo = true }:
     }
     setShowHeartAnim(true);
     setTimeout(() => setShowHeartAnim(false), 900);
-    if (!short.isLiked) {
-      toggleLikeShort({ short, feedType });
-    }
+    toggleLikeShort({ short, targetState: true, feedType });
   };
 
   const toggleMute = (e: React.MouseEvent) => {

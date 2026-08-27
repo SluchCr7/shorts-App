@@ -5,6 +5,7 @@ const {
   updateAccountDetails,
   updateUserAvatar,
   updateUserCover,
+  toggleFollowUser,
   followUser,
   unfollowUser,
   getUserFollowers,
@@ -34,9 +35,11 @@ router.patch("/cover", verifyJWT, upload.single("coverImage"), updateUserCover);
 // Saved shorts (private to user)
 router.get("/saved/shorts", verifyJWT, getUserSavedShorts);
 
-// Follow / Unfollow
-router.post("/:id/follow", verifyJWT, followUser);
-router.post("/:id/unfollow", verifyJWT, unfollowUser);
+// Follow / Unfollow (Unified Toggle Endpoints)
+router.post("/:id/follow", verifyJWT, toggleFollowUser);
+router.post("/:id/toggle-follow", verifyJWT, toggleFollowUser);
+router.post("/:id/unfollow", verifyJWT, toggleFollowUser);
+router.delete("/:id/follow", verifyJWT, toggleFollowUser);
 
 // Verify account
 router.post("/verify", verifyJWT, verifyAccount);

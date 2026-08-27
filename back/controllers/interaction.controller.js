@@ -6,161 +6,150 @@ const ApiError = require("../utils/ApiError");
 const ApiResponse = require("../utils/ApiResponse");
 const asyncHandler = require("../utils/asyncHandler");
 
-// @desc    Like a short video
-// @route   POST /api/v1/shorts/:id/like
+// @desc    Toggle Like/Love on a short video (Idempotent & Atomic)
+// @route   POST /api/v1/shorts/:id/like or /api/v1/shorts/:id/toggle-like
 // @access  Private
-const likeShort = asyncHandler(async (req, res) => {
+const toggleLikeShort = asyncHandler(async (req, res) => {
   const shortId = req.params.id;
+  const userId = req.user._id;
 
   const short = await Short.findById(shortId);
   if (!short) {
     throw new ApiError(404, "Short video not found");
   }
+
+  const targetState =
+    typeof req.body?.targetState === "boolean"
+      ? req.body.targetState
+      : typeof req.body?.isLiked === "boolean"
+      ? req.body.isLiked
+      : null;
 
   const existingLike = await Like.findOne({
-    user: req.user._id,
+    user: userId,
     short: shortId,
   });
 
-  if (existingLike) {
-    throw new ApiError(400, "Short is already liked");
+  let shouldLike = false;
+  if (targetState !== null) {
+    shouldLike = targetState;
+  } else {
+    shouldLike = !existingLike;
   }
 
-  await Like.create({
-    user: req.user._id,
-    short: shortId,
-  });
+  if (shouldLike) {
+    if (!existingLike) {
+      try {
+        await Like.create({
+          user: userId,
+          short: shortId,
+        });
+        await Short.findByIdAndUpdate(shortId, { $inc: { likesCount: 1 } });
+        if (short.owner) {
+          await User.findByIdAndUpdate(short.owner, { $inc: { likesCount: 1 } });
+        }
+      } catch (error) {
+        if (error.code !== 11000) throw error;
+      }
+    }
+  } else {
+    if (existingLike) {
+      await Like.findOneAndDelete({
+        user: userId,
+        short: shortId,
+      });
+      await Short.findByIdAndUpdate(shortId, { $inc: { likesCount: -1 } });
+      if (short.owner) {
+        await User.findByIdAndUpdate(short.owner, { $inc: { likesCount: -1 } });
+      }
+    }
+  }
 
-  const updatedShort = await Short.findByIdAndUpdate(
-    shortId,
-    { $inc: { likesCount: 1 } },
-    { new: true }
-  ).select("likesCount");
-
-  // Increment overall likes count for video creator
-  await User.findByIdAndUpdate(short.owner, { $inc: { likesCount: 1 } });
+  const updatedShort = await Short.findById(shortId).select("likesCount");
+  const actualLikesCount = Math.max(0, updatedShort ? updatedShort.likesCount : 0);
+  const actualIsLiked = !!(await Like.exists({ user: userId, short: shortId }));
 
   return res.status(200).json(
     new ApiResponse(
       200,
-      { isLiked: true, likesCount: updatedShort.likesCount },
-      "Short liked successfully"
+      { isLiked: actualIsLiked, likesCount: actualLikesCount },
+      actualIsLiked ? "Short liked successfully" : "Short unliked successfully"
     )
   );
 });
 
-// @desc    Unlike a short video
-// @route   DELETE /api/v1/shorts/:id/like
+// Backward compatibility aliases
+const likeShort = toggleLikeShort;
+const unlikeShort = toggleLikeShort;
+
+// @desc    Toggle Save/Bookmark on a short video (Idempotent & Atomic)
+// @route   POST /api/v1/shorts/:id/save or /api/v1/shorts/:id/toggle-save
 // @access  Private
-const unlikeShort = asyncHandler(async (req, res) => {
+const toggleSaveShort = asyncHandler(async (req, res) => {
   const shortId = req.params.id;
+  const userId = req.user._id;
 
   const short = await Short.findById(shortId);
   if (!short) {
     throw new ApiError(404, "Short video not found");
   }
 
-  const existingLike = await Like.findOneAndDelete({
-    user: req.user._id,
-    short: shortId,
-  });
-
-  if (!existingLike) {
-    throw new ApiError(400, "Short is not liked yet");
-  }
-
-  const updatedShort = await Short.findByIdAndUpdate(
-    shortId,
-    { $inc: { likesCount: -1 } },
-    { new: true }
-  ).select("likesCount");
-
-  // Decrement overall likes count for video creator
-  await User.findByIdAndUpdate(short.owner, { $inc: { likesCount: -1 } });
-
-  return res.status(200).json(
-    new ApiResponse(
-      200,
-      { isLiked: false, likesCount: Math.max(0, updatedShort.likesCount) },
-      "Short unliked successfully"
-    )
-  );
-});
-
-// @desc    Save/Bookmark a short video
-// @route   POST /api/v1/shorts/:id/save
-// @access  Private
-const saveShort = asyncHandler(async (req, res) => {
-  const shortId = req.params.id;
-
-  const short = await Short.findById(shortId);
-  if (!short) {
-    throw new ApiError(404, "Short video not found");
-  }
+  const targetState =
+    typeof req.body?.targetState === "boolean"
+      ? req.body.targetState
+      : typeof req.body?.isSaved === "boolean"
+      ? req.body.isSaved
+      : null;
 
   const existingSave = await Save.findOne({
-    user: req.user._id,
+    user: userId,
     short: shortId,
   });
 
-  if (existingSave) {
-    throw new ApiError(400, "Short is already saved");
+  let shouldSave = false;
+  if (targetState !== null) {
+    shouldSave = targetState;
+  } else {
+    shouldSave = !existingSave;
   }
 
-  await Save.create({
-    user: req.user._id,
-    short: shortId,
-  });
+  if (shouldSave) {
+    if (!existingSave) {
+      try {
+        await Save.create({
+          user: userId,
+          short: shortId,
+        });
+        await Short.findByIdAndUpdate(shortId, { $inc: { savesCount: 1 } });
+      } catch (error) {
+        if (error.code !== 11000) throw error;
+      }
+    }
+  } else {
+    if (existingSave) {
+      await Save.findOneAndDelete({
+        user: userId,
+        short: shortId,
+      });
+      await Short.findByIdAndUpdate(shortId, { $inc: { savesCount: -1 } });
+    }
+  }
 
-  const updatedShort = await Short.findByIdAndUpdate(
-    shortId,
-    { $inc: { savesCount: 1 } },
-    { new: true }
-  ).select("savesCount");
+  const updatedShort = await Short.findById(shortId).select("savesCount");
+  const actualSavesCount = Math.max(0, updatedShort ? updatedShort.savesCount : 0);
+  const actualIsSaved = !!(await Save.exists({ user: userId, short: shortId }));
 
   return res.status(200).json(
     new ApiResponse(
       200,
-      { isSaved: true, savesCount: updatedShort.savesCount },
-      "Short saved successfully"
+      { isSaved: actualIsSaved, savesCount: actualSavesCount },
+      actualIsSaved ? "Short saved successfully" : "Short unsaved successfully"
     )
   );
 });
 
-// @desc    Unsave/Remove bookmark from a short video
-// @route   DELETE /api/v1/shorts/:id/save
-// @access  Private
-const unsaveShort = asyncHandler(async (req, res) => {
-  const shortId = req.params.id;
-
-  const short = await Short.findById(shortId);
-  if (!short) {
-    throw new ApiError(404, "Short video not found");
-  }
-
-  const existingSave = await Save.findOneAndDelete({
-    user: req.user._id,
-    short: shortId,
-  });
-
-  if (!existingSave) {
-    throw new ApiError(400, "Short is not saved");
-  }
-
-  const updatedShort = await Short.findByIdAndUpdate(
-    shortId,
-    { $inc: { savesCount: -1 } },
-    { new: true }
-  ).select("savesCount");
-
-  return res.status(200).json(
-    new ApiResponse(
-      200,
-      { isSaved: false, savesCount: Math.max(0, updatedShort.savesCount) },
-      "Short unsaved successfully"
-    )
-  );
-});
+// Backward compatibility aliases
+const unsaveShort = toggleSaveShort;
 
 // @desc    Increment share counter for a short
 // @route   POST /api/v1/shorts/:id/share
@@ -224,6 +213,8 @@ const shareShort = asyncHandler(async (req, res) => {
 
 
 module.exports = {
+  toggleLikeShort,
+  toggleSaveShort,
   likeShort,
   unlikeShort,
   saveShort,

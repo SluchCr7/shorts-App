@@ -131,73 +131,77 @@ const deleteComment = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, {}, "Comment deleted successfully"));
 });
 
-// @desc    Like a comment
-// @route   POST /api/v1/comments/:id/like
+// @desc    Toggle Like on a comment (Idempotent & Atomic)
+// @route   POST /api/v1/comments/:id/like or /api/v1/comments/:id/toggle-like
 // @access  Private
-const likeComment = asyncHandler(async (req, res) => {
+const toggleLikeComment = asyncHandler(async (req, res) => {
   const commentId = req.params.id;
+  const userId = req.user._id;
 
   const comment = await Comment.findById(commentId);
   if (!comment) {
     throw new ApiError(404, "Comment not found");
   }
 
+  const targetState =
+    typeof req.body?.targetState === "boolean"
+      ? req.body.targetState
+      : typeof req.body?.isLiked === "boolean"
+      ? req.body.isLiked
+      : null;
+
   const existingLike = await Like.findOne({
-    user: req.user._id,
+    user: userId,
     comment: commentId,
   });
 
-  if (existingLike) {
-    throw new ApiError(400, "Comment is already liked");
+  let shouldLike = false;
+  if (targetState !== null) {
+    shouldLike = targetState;
+  } else {
+    shouldLike = !existingLike;
   }
 
-  await Like.create({
-    user: req.user._id,
-    comment: commentId,
-  });
-
-  const updatedComment = await Comment.findByIdAndUpdate(
-    commentId,
-    { $inc: { likesCount: 1 } },
-    { new: true }
-  ).select("likesCount");
-
-  return res
-    .status(200)
-    .json(new ApiResponse(200, { isLiked: true, likesCount: updatedComment.likesCount }, "Comment liked"));
-});
-
-// @desc    Unlike a comment
-// @route   DELETE /api/v1/comments/:id/like
-// @access  Private
-const unlikeComment = asyncHandler(async (req, res) => {
-  const commentId = req.params.id;
-
-  const existingLike = await Like.findOneAndDelete({
-    user: req.user._id,
-    comment: commentId,
-  });
-
-  if (!existingLike) {
-    throw new ApiError(400, "Comment is not liked yet");
+  if (shouldLike) {
+    if (!existingLike) {
+      try {
+        await Like.create({
+          user: userId,
+          comment: commentId,
+        });
+        await Comment.findByIdAndUpdate(commentId, { $inc: { likesCount: 1 } });
+      } catch (error) {
+        if (error.code !== 11000) throw error;
+      }
+    }
+  } else {
+    if (existingLike) {
+      await Like.findOneAndDelete({
+        user: userId,
+        comment: commentId,
+      });
+      await Comment.findByIdAndUpdate(commentId, { $inc: { likesCount: -1 } });
+    }
   }
 
-  const updatedComment = await Comment.findByIdAndUpdate(
-    commentId,
-    { $inc: { likesCount: -1 } },
-    { new: true }
-  ).select("likesCount");
+  const updatedComment = await Comment.findById(commentId).select("likesCount");
+  const actualLikesCount = Math.max(0, updatedComment ? updatedComment.likesCount : 0);
+  const actualIsLiked = !!(await Like.exists({ user: userId, comment: commentId }));
 
   return res
     .status(200)
     .json(
       new ApiResponse(
         200,
-        { isLiked: false, likesCount: Math.max(0, updatedComment.likesCount) },
-        "Comment unliked"
+        { isLiked: actualIsLiked, likesCount: actualLikesCount },
+        actualIsLiked ? "Comment liked successfully" : "Comment unliked successfully"
       )
     );
 });
+
+// Backward compatibility aliases
+const likeComment = toggleLikeComment;
+const unlikeComment = toggleLikeComment;
 
 // @desc    Get nested replies for a comment
 // @route   GET /api/v1/comments/:id/replies
@@ -262,6 +266,7 @@ module.exports = {
   getCommentReplies,
   addComment,
   deleteComment,
+  toggleLikeComment,
   likeComment,
   unlikeComment,
 };

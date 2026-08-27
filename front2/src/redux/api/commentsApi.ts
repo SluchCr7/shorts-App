@@ -46,20 +46,30 @@ export const commentsApi = baseApi.injectEndpoints({
     }),
 
     toggleLikeComment: builder.mutation<
-      void,
-      { commentId: string; shortId: string; parentCommentId?: string; isLiked?: boolean }
+      { isLiked: boolean; likesCount: number },
+      { commentId: string; shortId: string; parentCommentId?: string; isLiked?: boolean; targetState?: boolean }
     >({
-      query: ({ commentId, isLiked }) => ({
+      query: ({ commentId, isLiked, targetState }) => ({
         url: `/comments/${commentId}/like`,
-        method: isLiked ? "DELETE" : "POST",
+        method: "POST",
+        body: typeof targetState === "boolean" ? { targetState } : typeof isLiked === "boolean" ? { targetState: !isLiked } : {},
       }),
-      async onQueryStarted({ commentId, shortId, parentCommentId }, { dispatch, queryFulfilled }) {
+      transformResponse: (res: { data: { isLiked: boolean; likesCount: number } }) => res.data,
+      async onQueryStarted({ commentId, shortId, parentCommentId, isLiked, targetState }, { dispatch, queryFulfilled }) {
+        const nextIsLiked = typeof targetState === "boolean" ? targetState : !isLiked;
+        const diff = nextIsLiked ? 1 : -1;
+
+        const updateItem = (comment: Comment) => {
+          if (comment._id === commentId) {
+            comment.isLiked = nextIsLiked;
+            comment.likesCount = Math.max(0, comment.likesCount + diff);
+          }
+        };
+
         const patchList = dispatch(
           commentsApi.util.updateQueryData("getComments", shortId, (draft) => {
-            const comment = draft.find((c) => c._id === commentId);
-            if (comment) {
-              comment.isLiked = !comment.isLiked;
-              comment.likesCount += comment.isLiked ? 1 : -1;
+            if (Array.isArray(draft)) {
+              draft.forEach(updateItem);
             }
           })
         );
@@ -68,17 +78,41 @@ export const commentsApi = baseApi.injectEndpoints({
         if (parentCommentId) {
           patchReplies = dispatch(
             commentsApi.util.updateQueryData("getCommentReplies", parentCommentId, (draft) => {
-              const comment = draft.find((c) => c._id === commentId);
-              if (comment) {
-                comment.isLiked = !comment.isLiked;
-                comment.likesCount += comment.isLiked ? 1 : -1;
+              if (Array.isArray(draft)) {
+                draft.forEach(updateItem);
               }
             })
           );
         }
 
         try {
-          await queryFulfilled;
+          const { data } = await queryFulfilled;
+          if (data) {
+            const reconcileItem = (comment: Comment) => {
+              if (comment._id === commentId) {
+                comment.isLiked = data.isLiked;
+                comment.likesCount = data.likesCount;
+              }
+            };
+
+            dispatch(
+              commentsApi.util.updateQueryData("getComments", shortId, (draft) => {
+                if (Array.isArray(draft)) {
+                  draft.forEach(reconcileItem);
+                }
+              })
+            );
+
+            if (parentCommentId) {
+              dispatch(
+                commentsApi.util.updateQueryData("getCommentReplies", parentCommentId, (draft) => {
+                  if (Array.isArray(draft)) {
+                    draft.forEach(reconcileItem);
+                  }
+                })
+              );
+            }
+          }
         } catch {
           patchList.undo();
           if (patchReplies) patchReplies.undo();

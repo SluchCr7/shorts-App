@@ -28,27 +28,43 @@ export const usersApi = baseApi.injectEndpoints({
     }),
 
     toggleFollowUser: builder.mutation<
-      { userId: string; isFollowing: boolean },
-      { userId: string; username?: string; isFollowing?: boolean }
+      { isFollowing: boolean; followersCount: number },
+      { userId: string; username?: string; isFollowing?: boolean; targetState?: boolean }
     >({
-      query: ({ userId, isFollowing }) => ({
+      query: ({ userId, isFollowing, targetState }) => ({
         url: `/users/${userId}/follow`,
-        method: isFollowing ? "DELETE" : "POST",
+        method: "POST",
+        body: typeof targetState === "boolean" ? { targetState } : typeof isFollowing === "boolean" ? { targetState: !isFollowing } : {},
       }),
-      async onQueryStarted({ username, isFollowing }, { dispatch, queryFulfilled }) {
+      transformResponse: (res: { data: { isFollowing: boolean; followersCount: number } }) => res.data,
+      async onQueryStarted({ userId, username, isFollowing, targetState }, { dispatch, queryFulfilled }) {
+        const nextIsFollowing = typeof targetState === "boolean" ? targetState : !isFollowing;
+        const diff = nextIsFollowing ? 1 : -1;
+
         let patchProfile;
         if (username) {
           patchProfile = dispatch(
             usersApi.util.updateQueryData("getUserProfile", username, (draft) => {
               if (draft) {
-                draft.isFollowing = !draft.isFollowing;
-                draft.followersCount += draft.isFollowing ? 1 : -1;
+                draft.isFollowing = nextIsFollowing;
+                draft.followersCount = Math.max(0, draft.followersCount + diff);
               }
             })
           );
         }
+
         try {
-          await queryFulfilled;
+          const { data } = await queryFulfilled;
+          if (data && username) {
+            dispatch(
+              usersApi.util.updateQueryData("getUserProfile", username, (draft) => {
+                if (draft) {
+                  draft.isFollowing = data.isFollowing;
+                  draft.followersCount = data.followersCount;
+                }
+              })
+            );
+          }
         } catch {
           if (patchProfile) patchProfile.undo();
         }

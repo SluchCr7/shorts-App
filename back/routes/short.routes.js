@@ -10,6 +10,8 @@ const {
   incrementShortView,
 } = require("../controllers/short.controller");
 const {
+  toggleLikeShort,
+  toggleSaveShort,
   likeShort,
   unlikeShort,
   saveShort,
@@ -53,11 +55,14 @@ router.delete("/:id", verifyJWT, deleteShort);
 router.post("/:id/view", incrementShortView);
 router.post("/:id/share", optionalAuth, shareShort);
 
-// Interactions (Likes & Saves)
-router.post("/:id/like", verifyJWT, likeShort);
-router.delete("/:id/like", verifyJWT, unlikeShort);
-router.post("/:id/save", verifyJWT, saveShort);
-router.delete("/:id/save", verifyJWT, unsaveShort);
+// Interactions (Likes & Saves - Unified Toggle Endpoints)
+router.post("/:id/like", verifyJWT, toggleLikeShort);
+router.post("/:id/toggle-like", verifyJWT, toggleLikeShort);
+router.delete("/:id/like", verifyJWT, toggleLikeShort);
+
+router.post("/:id/save", verifyJWT, toggleSaveShort);
+router.post("/:id/toggle-save", verifyJWT, toggleSaveShort);
+router.delete("/:id/save", verifyJWT, toggleSaveShort);
 
 // Comments for Short
 router.get("/:id/comments", optionalAuth, getShortComments);

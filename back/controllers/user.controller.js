@@ -133,13 +133,14 @@ const updateUserCover = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, updatedUser, "Cover image updated successfully"));
 });
 
-// @desc    Follow a user
-// @route   POST /api/v1/users/:id/follow
+// @desc    Toggle Follow/Unfollow a user (Idempotent & Atomic)
+// @route   POST /api/v1/users/:id/follow or /api/v1/users/:id/toggle-follow
 // @access  Private
-const followUser = asyncHandler(async (req, res) => {
+const toggleFollowUser = asyncHandler(async (req, res) => {
   const targetUserId = req.params.id;
+  const followerId = req.user._id;
 
-  if (targetUserId === req.user._id.toString()) {
+  if (targetUserId === followerId.toString()) {
     throw new ApiError(400, "You cannot follow yourself");
   }
 
@@ -148,50 +149,67 @@ const followUser = asyncHandler(async (req, res) => {
     throw new ApiError(404, "User to follow not found");
   }
 
+  const targetState =
+    typeof req.body?.targetState === "boolean"
+      ? req.body.targetState
+      : typeof req.body?.isFollowing === "boolean"
+      ? req.body.isFollowing
+      : null;
+
   const existingFollow = await Follow.findOne({
-    follower: req.user._id,
+    follower: followerId,
     following: targetUserId,
   });
 
-  if (existingFollow) {
-    throw new ApiError(400, "You are already following this user");
+  let shouldFollow = false;
+  if (targetState !== null) {
+    shouldFollow = targetState;
+  } else {
+    shouldFollow = !existingFollow;
   }
 
-  await Follow.create({
-    follower: req.user._id,
-    following: targetUserId,
-  });
+  if (shouldFollow) {
+    if (!existingFollow) {
+      try {
+        await Follow.create({
+          follower: followerId,
+          following: targetUserId,
+        });
+        await User.findByIdAndUpdate(followerId, { $inc: { followingCount: 1 } });
+        await User.findByIdAndUpdate(targetUserId, { $inc: { followersCount: 1 } });
+      } catch (error) {
+        if (error.code !== 11000) throw error;
+      }
+    }
+  } else {
+    if (existingFollow) {
+      await Follow.findOneAndDelete({
+        follower: followerId,
+        following: targetUserId,
+      });
+      await User.findByIdAndUpdate(followerId, { $inc: { followingCount: -1 } });
+      await User.findByIdAndUpdate(targetUserId, { $inc: { followersCount: -1 } });
+    }
+  }
 
-  await User.findByIdAndUpdate(req.user._id, { $inc: { followingCount: 1 } });
-  await User.findByIdAndUpdate(targetUserId, { $inc: { followersCount: 1 } });
+  const updatedTargetUser = await User.findById(targetUserId).select("followersCount");
+  const actualFollowersCount = Math.max(0, updatedTargetUser ? updatedTargetUser.followersCount : 0);
+  const actualIsFollowing = !!(await Follow.exists({ follower: followerId, following: targetUserId }));
 
   return res
     .status(200)
-    .json(new ApiResponse(200, { isFollowing: true }, "User followed successfully"));
+    .json(
+      new ApiResponse(
+        200,
+        { isFollowing: actualIsFollowing, followersCount: actualFollowersCount },
+        actualIsFollowing ? "User followed successfully" : "User unfollowed successfully"
+      )
+    );
 });
 
-// @desc    Unfollow a user
-// @route   POST /api/v1/users/:id/unfollow
-// @access  Private
-const unfollowUser = asyncHandler(async (req, res) => {
-  const targetUserId = req.params.id;
-
-  const existingFollow = await Follow.findOneAndDelete({
-    follower: req.user._id,
-    following: targetUserId,
-  });
-
-  if (!existingFollow) {
-    throw new ApiError(400, "You are not following this user");
-  }
-
-  await User.findByIdAndUpdate(req.user._id, { $inc: { followingCount: -1 } });
-  await User.findByIdAndUpdate(targetUserId, { $inc: { followersCount: -1 } });
-
-  return res
-    .status(200)
-    .json(new ApiResponse(200, { isFollowing: false }, "User unfollowed successfully"));
-});
+// Backward compatibility aliases
+const followUser = toggleFollowUser;
+const unfollowUser = toggleFollowUser;
 
 // @desc    Get user followers
 // @route   GET /api/v1/users/:id/followers
@@ -408,6 +426,7 @@ module.exports = {
   updateAccountDetails,
   updateUserAvatar,
   updateUserCover,
+  toggleFollowUser,
   followUser,
   unfollowUser,
   getUserFollowers,
