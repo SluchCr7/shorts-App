@@ -149,6 +149,7 @@ const toggleSaveShort = asyncHandler(async (req, res) => {
 });
 
 // Backward compatibility aliases
+const saveShort = toggleSaveShort;
 const unsaveShort = toggleSaveShort;
 
 // @desc    Increment share counter for a short
